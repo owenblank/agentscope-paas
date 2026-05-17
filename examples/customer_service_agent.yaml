@@ -1,0 +1,498 @@
+# ============================================
+# AgentScope PaaS 单智能体配置示例
+# 智能体类型：客户服务助手
+# ============================================
+
+# ============================================
+# 一、基础元信息（必填）
+# ============================================
+agent_metadata:
+  agent_id: "customer_service_001"
+  agent_name: "智能客服助手"
+  agent_type: "DialogAgent"
+  description: "24小时在线智能客服，提供产品咨询、订单查询、售后支持等服务"
+  version: "1.0.0"
+  tags:
+    - "客户服务"
+    - "中文支持"
+    - "售前售后"
+
+# ============================================
+# 二、大模型配置（必填）
+# ============================================
+model_config:
+  model_name: "gpt-4o"
+  api_key: "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  base_url: "https://api.openai.com/v1"
+  temperature: 0.7
+  max_tokens: 1500
+  top_p: 0.9
+  frequency_penalty: 0.3
+  presence_penalty: 0.1
+
+# ============================================
+# 三、核心提示词（必填）
+# ============================================
+prompt_config:
+  system_prompt: |
+    你是一个专业的客户服务代表，为用户提供优质的售前售后服务。
+
+    你的职责包括：
+    1. 产品咨询：详细介绍产品功能、规格、价格等信息
+    2. 订单查询：帮助用户查询订单状态、物流信息
+    3. 售后支持：处理退换货、投诉、技术问题等
+    4. 投诉建议：记录用户反馈并及时上报
+
+    服务原则：
+    - 始终保持专业、友好、耐心的态度
+    - 快速响应用户需求，不推诿责任
+    - 对于无法解决的问题，及时转人工客服
+    - 保护用户隐私，不泄露任何个人信息
+    - 使用简洁易懂的语言，避免技术术语
+
+    工作流程：
+    1. 热情问候并了解用户需求
+    2. 仔细分析问题并提供解决方案
+    3. 确认用户满意度并提供进一步帮助
+    4. 礼貌结束对话
+
+  user_prompt_template: "用户咨询：{user_input}\n请提供专业的回答和建议。"
+
+# ============================================
+# 四、记忆模块（可选）
+# ============================================
+memory_config:
+  memory_type: "short_term"
+  max_history_rounds: 15
+  storage_config:
+    storage_type: "file"
+    storage_path: "./memory/customer_service_memory.json"
+
+# ============================================
+# 五、工具调用模块（可选）
+# ============================================
+tool_config:
+  tools:
+    # 工具1：订单查询
+    - tool_id: "order_query"
+      tool_name: "订单查询系统"
+      tool_type: "api"
+      description: "查询用户订单状态、物流信息、订单详情"
+      tool_config:
+        endpoint: "https://api.example.com/orders/query"
+        method: "POST"
+        headers:
+          Content-Type: "application/json"
+        auth:
+          type: "bearer"
+          token: "your_order_api_token_here"
+      permissions:
+        enabled: true
+        max_calls_per_session: 20
+
+    # 工具2：产品信息查询
+    - tool_id: "product_info"
+      tool_name: "产品信息库"
+      tool_type: "database"
+      description: "查询产品详细信息、价格、库存状态"
+      tool_config:
+        connection_string: "postgresql://user:password@localhost:5432/products"
+        table_name: "product_catalog"
+        max_rows: 50
+      permissions:
+        enabled: true
+        max_calls_per_session: 30
+
+    # 工具3：知识库搜索
+    - tool_id: "knowledge_base"
+      tool_name: "客服知识库"
+      tool_type: "vector_search"
+      description: "搜索常见问题解答、帮助文档、使用指南"
+      tool_config:
+        vector_db_path: "./data/knowledge_base_vectors"
+        collection_name: "faq_documents"
+        top_k: 3
+        similarity_threshold: 0.75
+      permissions:
+        enabled: true
+        max_calls_per_session: 15
+
+# ============================================
+# 六、知识库配置（基于平台知识库）
+# ============================================
+knowledge_config:
+  # 平台知识库配置（统一使用平台知识库服务）
+  platform_knowledge:
+    # 是否启用平台知识库
+    enabled: true
+    # 平台知识库服务URL
+    platform_url: "{{平台知识库服务URL，如：https://knowledge.example.com/api/v1}}"
+    # 知识库连接配置
+    connection_config:
+      # 认证配置
+      authentication:
+        # 认证方式：bearer_token, api_key, oauth2
+        type: "bearer_token"
+        # 认证令牌
+        token: "{{平台知识库访问令牌}}"
+        # OAuth2配置（当type为oauth2时使用）
+        oauth2_config:
+          client_id: "{{OAuth客户端ID}}"
+          client_secret: "{{OAuth客户端密钥}}"
+          token_url: "{{OAuth令牌获取URL}}"
+      # 请求头配置
+      headers:
+        Content-Type: "application/json"
+        User-Agent: "AgentScope-PaaS/1.0"
+      # 超时配置（秒）
+      timeout: 30
+      # 重试配置
+      retry_config:
+        max_retries: 3
+        retry_delay: 1
+        backoff_multiplier: 2
+
+    # 知识库检索配置
+    retrieval_config:
+      # 检索模式：semantic, keyword, hybrid
+      retrieval_mode: "semantic"
+      # 相似度阈值（0.0-1.0）
+      similarity_threshold: 0.75
+      # 返回结果数量
+      top_k: 5
+      # 启用上下文增强
+      enable_context_enhancement: true
+      # 上下文窗口大小
+      context_window_size: 3
+
+    # 知识库库配置
+    knowledge_bases:
+      # 知识库1：客服知识库
+      - knowledge_base_id: "customer_service_kb"
+        knowledge_base_name: "客服知识库"
+        description: "包含产品信息、FAQ、使用指南、故障排查等客服相关知识"
+        enabled: true
+        # 知识库特定配置
+        config:
+          # 知识库类型：general, technical, business, domain_specific
+          knowledge_type: "business"
+          # 语言设置
+          language: "zh-CN"
+          # 更新频率（秒）
+          update_frequency: 3600
+          # 缓存配置
+          cache_config:
+            enabled: true
+            ttl: 1800
+            max_size: 1000
+
+      # 知识库2：产品知识库
+      - knowledge_base_id: "product_kb"
+        knowledge_base_name: "产品知识库"
+        description: "包含产品规格、功能介绍、价格信息、库存状态等"
+        enabled: true
+        config:
+          knowledge_type: "business"
+          language: "zh-CN"
+          update_frequency: 7200
+          cache_config:
+            enabled: true
+            ttl: 3600
+            max_size: 500
+
+    # 权限配置
+    permissions:
+      enabled: true
+      # 每次会话最大查询次数
+      max_queries_per_conversation: 20
+      # 允许的操作
+      allowed_operations:
+        - "search"
+        - "retrieve"
+        - "summarize"
+      # 访问控制
+      access_control:
+        # 允许的IP地址（可选）
+        allowed_ips:
+          - "{{允许的IP地址1}}"
+          - "{{允许的IP地址2}}"
+        # 允许的用户角色（可选）
+        allowed_roles:
+          - "customer_service"
+          - "sales"
+
+# ============================================
+# 七、技能配置（前端上传方式）
+# ============================================
+skills_config:
+  # 技能加载方式：upload（前端上传）
+  load_mode: "upload"
+
+  # 上传配置
+  upload_config:
+    # 支持的上传方式
+    supported_upload_methods:
+      # 文件夹上传
+      - method: "folder"
+        enabled: true
+        description: "上传包含技能文件的文件夹"
+        max_size_mb: 3
+        supported_formats:
+          - ".md"  # 支持SKILL.md文件
+
+      # ZIP压缩包上传
+      - method: "zip"
+        enabled: true
+        description: "上传ZIP格式的技能压缩包"
+        max_size_mb: 3
+        max_files: 50
+        supported_formats:
+          - ".zip"
+        # 解压配置
+        extraction_config:
+          extract_root_only: false  # 是否只解压根目录
+          preserve_structure: true   # 是否保留目录结构
+          overwrite_existing: false  # 是否覆盖已存在的文件
+
+      # 单个文件上传
+      - method: "single_file"
+        enabled: true
+        description: "上传单个技能配置文件"
+        max_size_mb: 3
+        supported_formats:
+          - ".md"  # 特别支持SKILL.md文件
+
+    # 文件大小限制（全局）
+    max_file_size_mb: 3
+    max_total_size_mb: 10  # 多个文件累计最大大小
+
+    # 文件数量限制
+    max_files_per_upload: 20
+
+    # SKILL.md规范验证
+    skill_validation_config:
+      # YAML frontmatter验证
+      yaml_frontmatter:
+        required_fields:
+          - "name"
+          - "description"
+        optional_fields:
+          - "compatibility"
+        field_rules:
+          name:
+            type: "string"
+            max_length: 100
+            pattern: "^[a-z0-9-]+$"
+            description: "技能标识符，小写字母、数字和连字符"
+          description:
+            type: "string"
+            min_length: 50
+            max_length: 500
+            description: "技能描述，说明何时触发及功能"
+
+      # Markdown body验证
+      markdown_body:
+        max_length: 20000
+        min_length: 100
+        required_sections: []
+        optional_sections:
+          - "## Usage"
+          - "## Examples"
+          - "## Configuration"
+          - "## Notes"
+
+      # 内容质量检查
+      content_quality:
+        check_clarity: true
+        check_completeness: true
+        check_formatting: true
+        min_instructions_length: 200
+
+    # 安全扫描配置
+    security_config:
+      # 文件内容安全检查
+      content_safety:
+        check_malicious_code: true
+        check_suspicious_patterns: true
+        max_script_size_kb: 500
+        allowed_script_types:
+          - "python"
+          - "javascript"
+          - "shell"
+        forbidden_patterns:
+          - "eval("
+          - "exec("
+          - "__import__('os')"
+          - "subprocess.call"
+
+      # 文件系统安全
+      file_system_security:
+        prevent_path_traversal: true
+        max_filename_length: 255
+        allowed_characters: "a-zA-Z0-9._-"
+        forbidden_files:
+          - ".env"
+          - "credentials.json"
+          - "secret.txt"
+
+    # 存储配置
+    storage_config:
+      # 存储位置类型：local, s3, oss, cos
+      storage_type: "local"
+      # 本地存储路径
+      local_storage_path: "./uploads/skills/"
+      # 临时存储路径
+      temp_storage_path: "./temp/skills/"
+      # 文件命名规则
+      naming_rule: "preserve_original"
+      # 是否创建技能备份
+      create_backup: true
+      # 备份保留天数
+      backup_retention_days: 30
+
+    # 技能处理配置
+    processing_config:
+      # 是否自动解析SKILL.md
+      auto_parse_skill_md: true
+      # 是否提取YAML frontmatter
+      extract_frontmatter: true
+      # 是否验证技能结构
+      validate_structure: true
+      # 是否生成技能预览
+      generate_preview: true
+      # 是否索引技能内容
+      index_content: true
+      # 支持的资源处理
+      resource_handling:
+        scripts:
+          enabled: true
+          auto_install_dependencies: false
+          execution_sandbox: true
+        references:
+          enabled: true
+          lazy_loading: true
+          max_size_mb: 2
+        assets:
+          enabled: true
+          cdn_upload: false
+          optimization: false
+
+  # 技能执行配置
+  execution_config:
+    # 最大并发技能数
+    max_concurrent_skills: 5
+    # 单个技能执行超时时间（秒）
+    skill_timeout: 30
+    # 技能执行失败处理策略：continue, stop, retry
+    failure_handling_strategy: "continue"
+    # 最大重试次数
+    max_retries: 2
+
+  # 技能权限配置
+  permissions:
+    enabled: true
+    # 每次会话最大技能调用次数
+    max_skill_calls_per_conversation: 50
+    # 允许的技能类别
+    allowed_skill_categories:
+      - "customer_service"
+      - "order_processing"
+      - "product_query"
+      - "data_analysis"
+      - "general"
+    # 安全级别
+    security_level: "medium"
+
+    # 上传权限配置
+    upload_permissions:
+      # 允许上传的用户角色
+      allowed_roles:
+        - "admin"
+        - "developer"
+        - "user"
+      # 是否需要审核
+      require_moderation: false
+      # 是否允许覆盖已有技能
+      allow_overwrite: true
+      # 是否允许删除技能
+      allow_deletion: true
+
+# ============================================
+# 八、记忆模块（可选）
+# ============================================
+memory_config:
+  # 短期记忆配置
+  short_term:
+    enabled: true
+    max_history_rounds: 15
+
+  # 长期记忆配置
+  long_term:
+    enabled: true
+    storage_type: "vector"
+    vector_db_path: "./data/customer_service_memory"
+    collection_name: "customer_service_memories"
+    vector_config:
+      embedding_model: "text-embedding-ada-002"
+      similarity_threshold: 0.8
+      top_k: 5
+
+  # 向量记忆配置
+  vector:
+    enabled: false
+
+# ============================================
+# 六、行为控制（可选）
+# ============================================
+behavior_config:
+  max_conversation_rounds: 25
+  auto_reply: true
+  output_format:
+    type: "text"
+    include_reasoning: false
+    require_citations: true
+
+  safety_config:
+    content_filter: true
+    refused_topics:
+      - "政治敏感话题"
+      - "违法活动咨询"
+      - "人身攻击"
+      - "色情内容"
+
+  # 客服特定行为配置
+  service_config:
+    # 问候语
+    greeting_message: "您好！我是智能客服助手，很高兴为您服务。请问有什么可以帮您？"
+    # 结束语
+    closing_message: "感谢您的咨询，如还有其他问题，随时欢迎联系我们！"
+    # 转人工触发词
+    human_handover_keywords:
+      - "转人工"
+      - "人工客服"
+      - "投诉"
+      - "复杂问题"
+    # 工作时间
+    working_hours:
+      start: "00:00"
+      end: "23:59"
+      timezone: "Asia/Shanghai"
+
+# ============================================
+# 七、监控与日志（可选）
+# ============================================
+monitoring_config:
+  log_level: "INFO"
+  log_path: "./logs/customer_service.log"
+  enable_performance_tracking: true
+  save_conversation_history: true
+  conversation_history_path: "./history/conversations/"
+
+  # 客服特定监控指标
+  service_metrics:
+    # 客户满意度跟踪
+    track_satisfaction: true
+    # 平均响应时间
+    track_response_time: true
+    # 问题解决率
+    track_resolution_rate: true

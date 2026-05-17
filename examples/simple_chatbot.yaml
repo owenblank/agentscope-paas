@@ -1,0 +1,66 @@
+# ============================================
+# AgentScope PaaS 简单聊天机器人配置示例
+# 适合新手入门的极简配置
+# ============================================
+
+# ============================================
+# 基础元信息
+# ============================================
+agent_metadata:
+  agent_id: "simple_chatbot_001"
+  agent_name: "简单聊天机器人"
+  agent_type: "DialogAgent"
+  description: "一个基础的对话机器人，可以进行日常对话交流"
+  version: "1.0.0"
+  tags:
+    - "聊天"
+    - "新手示例"
+
+# ============================================
+# 大模型配置（使用免费或低成本模型）
+# ============================================
+model_config:
+  # 使用通义千问开源模型，成本更低
+  model_name: "qwen-turbo"
+  api_key: "sk-your-qwen-api-key-here"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  temperature: 0.8
+  max_tokens: 800
+
+# ============================================
+# 核心提示词（简洁明了）
+# ============================================
+prompt_config:
+  system_prompt: |
+    你是一个友好的聊天助手，可以和用户进行日常对话。
+
+    你的特点：
+    - 友好热情，善于倾听
+    - 回答简洁，通常1-3句话
+    - 知识丰富，可以讨论各种话题
+    - 保持礼貌和尊重
+
+    遇到无法回答的问题时，诚实告知用户。
+
+  user_prompt_template: "用户说：{user_input}"
+
+# ============================================
+# 基础配置（最少必要配置）
+# ============================================
+behavior_config:
+  max_conversation_rounds: 10
+  auto_reply: true
+
+memory_config:
+  short_term:
+    enabled: true
+    max_history_rounds: 10
+  long_term:
+    enabled: false
+  vector:
+    enabled: false
+
+monitoring_config:
+  log_level: "INFO"
+  save_conversation_history: true
+  conversation_history_path: "./logs/simple_chatbot/"
