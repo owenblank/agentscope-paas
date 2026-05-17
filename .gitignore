@@ -74,6 +74,7 @@ page_analysis_results.json
 
 # Screenshots
 *.png
+!docs/screenshots/*.png
 *_screenshots/
 e2e_screenshots/
 test_screenshots/
