@@ -1,83 +1,96 @@
-# AgentScope-PaaS 框架
+# AgentScope-PaaS 企业级智能体平台
 
 ## 🚀 项目简介
 
-AgentScope-PaaS 是一个**配置文件驱动**的智能体PaaS化框架，基于官方 AgentScope Python 库进行封装增强。
+AgentScope-PaaS 是一个**企业级智能体PaaS平台**，基于官方 AgentScope Python 库构建，提供完整的智能体管理、Web界面和API服务。
 
 **核心特性：**
-- 📝 **配置文件驱动**：用户只需通过 YAML 配置文件，无需编写任何业务代码
+- 🌐 **Web管理界面**：现代化的React前端，支持智能体配置、监控和管理
+- 🔌 **REST API服务**：完整的API服务器，支持智能体创建、调用和管理
+- 📝 **配置文件驱动**：YAML配置文件，无需编写代码即可创建智能体
 - 🤖 **支持所有智能体类型**：ReActAgent、DialogAgent、FunctionCallAgent、ToolAgent
-- 👥 **多智能体协作**：支持所有 AgentScope 协作模式（SequentialChat、RoundRobinChat、ManagerProxy、FreeChat）
-- 🔧 **无代码化**：修改配置文件即可使用，开箱即用
-- 🎯 **生产级质量**：完整的错误处理、日志记录、配置验证
+- 👥 **多智能体协作**：支持所有 AgentScope 协作模式
+- 🔐 **用户认证系统**：完整的用户注册、登录和权限管理
+- 📊 **监控和日志**：实时监控智能体状态，完整的操作日志
+- 🎯 **生产级质量**：完整的错误处理、数据验证和安全防护
 - 📦 **Skill-Creator 规范对齐**：完全兼容 Claude Code skill-creator 技能规范
 
 ---
 
 ## 📋 快速开始
 
-### 1. 环境准备
+### 方式一：Web界面（推荐）
 
+#### 1. 环境准备
 确保你的环境满足以下要求：
 - Python >= 3.8
+- Node.js >= 16
 - pip 包管理工具
 
-### 2. 安装依赖
+#### 2. 安装依赖
 
 ```bash
-# 进入项目目录
+# 克隆项目
+git clone https://github.com/owenblank/agentscope-paas.git
 cd agentscope-paas
 
-# 安装依赖
+# 安装Python依赖
+pip install -r requirements.txt
+
+# 安装前端依赖
+cd frontend
+npm install
+cd ..
+```
+
+#### 3. 启动服务
+
+**启动API服务器：**
+```bash
+# 方式1：直接运行
+cd api_server
+python main.py
+
+# 方式2：使用启动脚本
+bash start_api_server.sh
+```
+
+**启动前端界面：**
+```bash
+cd frontend
+npm run dev
+```
+
+#### 4. 访问界面
+
+- **前端界面**：http://localhost:5173
+- **API文档**：http://localhost:8000/docs
+- **注册账号**：首次使用请注册新账号
+
+### 方式二：命令行接口
+
+#### 1. 安装依赖
+```bash
 pip install -r requirements.txt
 ```
 
-### 3. 配置智能体
-
-在 `configs/` 目录下选择配置模板：
-
-#### 单智能体配置
+#### 2. 使用配置文件
+在 `examples/` 目录下选择配置模板：
 ```bash
-cd configs
-cp single_agent_paas_template.yaml my_agent.yaml
+# 单智能体配置
+cp examples/customer_service_agent.yaml my_agent.yaml
+
+# 多智能体团队配置
+cp examples/software_dev_team.yaml my_team.yaml
 ```
 
-编辑 `my_agent.yaml`，填写必需字段：
-- **智能体名称**、**ID**、**描述**
-- **模型配置**：model_name、api_key、base_url
-- **系统提示词**：system_prompt
-
-#### 多智能体团队配置
+#### 3. 运行智能体
 ```bash
-cd configs
-cp multi_agent_paas_template.yaml my_team.yaml
-```
+# 交互模式
+python main.py --config my_agent.yaml
 
-编辑 `my_team.yaml`，配置：
-- **团队信息**：team_name、collaboration_mode
-- **智能体列表**：每个智能体的配置
-- **协作配置**：发言顺序、终止条件
-
-### 4. 运行智能体
-
-#### 单智能体（交互模式）
-```bash
-python main.py --config configs/my_agent.yaml
-```
-
-#### 单智能体（单次对话）
-```bash
-python main.py --config configs/my_agent.yaml --input "你好"
-```
-
-#### 多智能体团队
-```bash
-python main.py --config configs/my_team.yaml --task "完成用户需求分析"
-```
-
-#### 查看配置信息
-```bash
-python main.py --config configs/my_agent.yaml --info
+# 单次对话
+python main.py --config my_agent.yaml --input "你好"
 ```
 
 ---
@@ -88,37 +101,94 @@ python main.py --config configs/my_agent.yaml --info
 agentscope-paas/
 ├── agentscope_paas/           # 框架核心包
 │   ├── __init__.py            # 包初始化
+│   ├── auth/                  # 认证模块
+│   │   ├── middleware.py      # JWT认证中间件
+│   │   └── security.py        # 安全工具函数
 │   ├── config/                # 配置模块
-│   │   ├── __init__.py
 │   │   ├── loader.py          # YAML配置加载、校验、解析
 │   │   └── validator.py       # 配置字段校验
 │   ├── factory/               # 智能体工厂
-│   │   ├── __init__.py
 │   │   ├── agent_factory.py   # 单智能体自动创建
 │   │   └── team_factory.py    # 多智能体团队创建
 │   ├── core/                  # 核心引擎
-│   │   ├── __init__.py
-│   │   └── engine.py          # 智能体运行引擎
+│   │   ├── engine.py          # 智能体运行引擎
+│   │   └── async_chat_processor.py  # 异步对话处理器
+│   ├── storage/               # 存储模块
+│   │   ├── models.py          # 数据模型
+│   │   ├── memory.py          # 内存存储
+│   │   └── base.py            # 基础存储接口
 │   └── utils/                 # 工具类
-│       ├── __init__.py
 │       ├── logger.py          # 日志工具
-│       └── exceptions.py       # 自定义异常
-├── configs/                   # 配置文件目录
-│   ├── single_agent_paas_template.yaml      # 单智能体模板
-│   └── multi_agent_paas_template.yaml       # 多智能体模板
+│       └── exceptions.py      # 自定义异常
+├── api_server/                # API服务器
+│   ├── main.py                # FastAPI主应用
+│   ├── routers/               # API路由
+│   │   ├── auth.py            # 认证相关API
+│   │   ├── agents.py          # 智能体管理API
+│   │   ├── chat.py            # 对话API
+│   │   └── monitoring.py      # 监控API
+│   ├── data/                  # 数据存储目录
+│   └── logs/                  # 日志目录
+├── frontend/                  # React前端应用
+│   ├── src/                   # 源代码
+│   │   ├── components/        # React组件
+│   │   ├── pages/             # 页面组件
+│   │   ├── services/          # API服务
+│   │   └── utils/             # 工具函数
+│   ├── public/                # 静态资源
+│   ├── package.json           # npm配置
+│   └── vite.config.ts         # Vite配置
+├── examples/                  # 配置示例
+│   ├── customer_service_agent.yaml      # 客服智能体示例
+│   ├── simple_chatbot.yaml              # 简单聊天机器人
+│   └── software_dev_team.yaml           # 软件开发团队
+├── tests/                     # 测试文件
+│   ├── test_auth_api.py       # 认证API测试
+│   ├── test_storage.py        # 存储测试
+│   └── test_security.py       # 安全测试
 ├── docs/                      # 文档目录
-│   └── SKILL_CONFIG_GUIDE.md  # 技能配置详细指南
-├── main.py                    # 主入口文件
-├── requirements.txt           # 项目依赖
-└── README.md                  # 使用说明（本文件）
+│   ├── system_architecture.md # 系统架构
+│   ├── api_design.md          # API设计文档
+│   └── database_design.md     # 数据库设计
+├── requirements.txt           # Python依赖
+├── requirements-dev.txt       # 开发依赖
+├── setup.py                   # 安装脚本
+└── README.md                  # 项目说明（本文件）
 ```
 
 ---
 
+## 🖥️ 界面展示
+
+### 登录认证界面
+![Login Page](docs/screenshots/01_login_page.png)
+
+### 用户注册界面
+![Register Page](docs/screenshots/02_register_page.png)
+
+### 智能体管理界面
+![Agents Management](docs/screenshots/04_agents_page.png)
+
+### 仪表板界面
+![Dashboard](docs/screenshots/05_dashboard.png)
+
 ## 🎯 核心功能
 
-### 1. 配置文件驱动
+### 1. Web管理界面
+- **智能体管理**：通过Web界面创建、编辑、删除智能体
+- **实时对话**：与智能体进行实时对话交互
+- **监控仪表板**：查看智能体运行状态和性能指标
+- **用户认证**：完整的用户注册、登录系统
+- **响应式设计**：支持桌面和移动设备
 
+### 2. REST API服务
+- **智能体API**：创建、更新、删除、查询智能体
+- **对话API**：发送消息、获取回复、管理对话历史
+- **认证API**：用户注册、登录、token刷新
+- **监控API**：获取系统状态、日志和性能指标
+- **Swagger文档**：自动生成的API文档
+
+### 3. 配置文件驱动
 通过 YAML 配置文件定义智能体的所有属性：
 
 ```yaml
@@ -134,28 +204,26 @@ model_config:
   base_url: "https://api.openai.com/v1"
 ```
 
-### 2. 智能体类型支持
-
+### 4. 智能体类型支持
 - **ReActAgent**：推理行动智能体，支持复杂推理和工具调用
 - **DialogAgent**：对话智能体，适合基础对话场景
 - **FunctionCallAgent**：函数调用智能体，支持外部API调用
 - **ToolAgent**：工具智能体，专注于工具调用和任务执行
 
-### 3. 多智能体协作模式
-
+### 5. 多智能体协作模式
 - **SequentialChat**：顺序对话，智能体按固定顺序轮流发言
 - **RoundRobinChat**：轮询对话，智能体循环轮流发言
 - **ManagerProxy**：管理者代理，由管理者智能体分配任务
 - **FreeChat**：自由对话，智能体自由参与讨论
 
-### 4. 高级功能
-
-- ✅ 记忆模块：短期记忆、长期记忆、向量记忆
-- ✅ 工具调用：支持外部工具和API集成
-- ✅ 知识库：平台知识库集成
+### 6. 企业级功能
+- ✅ **用户认证**：JWT认证、密码加密、会话管理
+- ✅ **数据存储**：用户数据、智能体配置、对话历史持久化
+- ✅ **API安全**：CORS配置、请求验证、速率限制
+- ✅ **日志系统**：操作日志、错误日志、访问日志
+- ✅ **监控告警**：系统状态监控、异常告警
+- ✅ **记忆模块**：短期记忆、长期记忆、向量记忆
 - ✅ **技能系统**：前端上传技能配置（对齐skill-creator规范）
-- ✅ 行为控制：对话轮次、自动回复、输出格式控制
-- ✅ 监控日志：性能监控、对话历史记录
 
 ---
 
@@ -511,12 +579,26 @@ skills_config:
 
 ## 📞 联系方式
 
-- 项目主页：[AgentScope-PaaS](https://github.com/your-repo/agentscope-paas)
-- 问题反馈：[Issues](https://github.com/your-repo/agentscope-paas/issues)
-- 邮箱：support@agentscope.example.com
+- 项目主页：[AgentScope-PaaS](https://github.com/owenblank/agentscope-paas)
+- 问题反馈：[Issues](https://github.com/owenblank/agentscope-paas/issues)
+- 在线演示：访问 http://your-domain.com （请部署后替换）
 
 ---
 
-**版本**：v1.0.0
-**最后更新**：2024年1月
+## 📊 项目状态
+
+当前版本：v1.0.0
+最后更新：2025年1月
+维护状态：✅ 活跃维护中
+
+**技术栈：**
+- 后端：Python 3.8+ / FastAPI / AgentScope
+- 前端：React 18 / TypeScript / Vite / Ant Design
+- 认证：JWT / bcrypt
+- 数据存储：JSON文件 / SQLite（可扩展至PostgreSQL）
+- API文档：Swagger/OpenAPI
+
+---
+
 **维护者**：AgentScope PaaS Team
+**许可证**：MIT License
