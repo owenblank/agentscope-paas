@@ -1,0 +1,187 @@
+# AgentScope-PaaS 项目配置文件
+# 现代Python项目标准配置，支持pip和PEP 517/518
+
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentscope-paas"
+version = "1.0.0"
+description = "配置文件驱动的智能体PaaS化框架"
+readme = "README.md"
+requires-python = ">=3.8,<4.0"
+license = {text = "MIT"}
+
+authors = [
+    {name = "AgentScope-PaaS Team", email = "support@agentscope-paas.example.com"}
+]
+
+maintainers = [
+    {name = "AgentScope-PaaS Team", email = "support@agentscope-paas.example.com"}
+]
+
+keywords = [
+    "agentscope",
+    "paas",
+    "agent",
+    "framework",
+    "llm",
+    "ai",
+    "configuration-driven",
+    "skill-creator",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Natural Language :: Chinese (Simplified)",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    # 核心依赖（生产环境必需）
+    "agentscope~=1.0.19",
+    "pyyaml>=6.0,<7.0",
+    "python-dateutil>=2.8.0,<3.0",
+    "requests>=2.28.0,<3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-repo/agentscope-paas"
+Documentation = "https://github.com/your-repo/agentscope-paas/wiki"
+Repository = "https://github.com/your-repo/agentscope-paas"
+"Bug Tracker" = "https://github.com/your-repo/agentscope-paas/issues"
+Changelog = "https://github.com/your-repo/agentscope-paas/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+# 开发环境依赖
+dev = [
+    "mypy>=1.0.0,<2.0",
+    "black>=22.0.0,<24.0",
+    "isort>=5.10.0,<6.0",
+    "flake8>=4.0.0,<5.0",
+    "pytest>=7.0.0,<8.0",
+    "pytest-cov>=4.0.0,<5.0",
+    "ipython>=8.0.0,<9.0",
+    "pydocstyle>=6.1.0,<7.0",
+]
+
+# 测试环境依赖
+test = [
+    "pytest>=7.0.0,<8.0",
+    "pytest-cov>=4.0.0,<5.0",
+    "pytest-mock>=3.10.0,<4.0",
+    "pytest-asyncio>=0.21.0,<1.0",
+    "pytest-xdist>=3.0.0,<4.0",
+]
+
+# 文档生成依赖
+docs = [
+    "sphinx>=4.5.0,<6.0",
+    "sphinx-rtd-theme>=1.0.0,<2.0",
+]
+
+# 完整依赖（包含所有可选依赖）
+all = [
+    "agentscope-paas[dev,test,docs]",
+    "python-dotenv>=1.0.0,<2.0",
+    "typing-extensions>=4.4.0,<5.0",
+]
+
+# ============================================
+# 工具配置
+# ============================================
+
+[tool.setuptools]
+packages = ["agentscope_paas"]
+
+[tool.setuptools.package-data]
+"agentscope_paas" = ["configs/*.yaml", "docs/*.md"]
+
+# ============================================
+# 代码质量工具配置
+# ============================================
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # 排除目录
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["agentscope_paas"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --disable-warnings"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+python_classes = ["Test*"]
+
+[tool.coverage.run]
+source = ["agentscope_paas"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+# ============================================
+# 许可证配置
+# ============================================
+# 许可证已在 [project] 部分声明为: license = {text = "MIT"}
+# 完整的MIT许可证文本见项目根目录的 LICENSE 文件
