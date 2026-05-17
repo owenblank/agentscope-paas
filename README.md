@@ -160,16 +160,30 @@ agentscope-paas/
 
 ## 🖥️ 界面展示
 
-### 登录认证界面
+### 用户认证界面
+
+#### 登录页面
 ![Login Page](docs/screenshots/01_login_page.png)
 
-### 用户注册界面
+#### 注册页面
 ![Register Page](docs/screenshots/02_register_page.png)
 
 ### 智能体管理界面
-![Agents Management](docs/screenshots/04_agents_page.png)
 
-### 仪表板界面
+#### 智能体列表页
+![Agent List](docs/screenshots/06_agent_list_detailed.png)
+
+#### 创建智能体界面
+![Create Agent Interface](docs/screenshots/07_create_agent_interface.png)
+
+### 对话交互界面
+
+#### 智能体聊天界面
+![Chat Interface](docs/screenshots/08_chat_interface.png)
+
+### 系统监控界面
+
+#### 仪表板
 ![Dashboard](docs/screenshots/05_dashboard.png)
 
 ## 🎯 核心功能
