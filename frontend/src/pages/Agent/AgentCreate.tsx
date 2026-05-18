@@ -9,6 +9,9 @@ import BasicInfoForm from '@/components/Agent/BasicInfoForm'
 import ModelConfigForm from '@/components/Agent/ModelConfigForm'
 import PromptConfigForm from '@/components/Agent/PromptConfigForm'
 import AdvancedConfigForm from '@/components/Agent/AdvancedConfigForm'
+import MCPConfigForm from '@/components/Agent/MCPConfigForm'
+import BuiltInToolsForm from '@/components/Agent/BuiltInToolsForm'
+import ContextCompressionForm from '@/components/Agent/ContextCompressionForm'
 import ConfigPreview from '@/components/Agent/ConfigPreview'
 
 const { Step } = Steps
@@ -90,6 +93,21 @@ const AgentCreate = () => {
       title: '高级配置',
       description: '配置工具、记忆和行为控制',
       component: AdvancedConfigForm,
+    },
+    {
+      title: 'MCP配置',
+      description: '配置Model Context Protocol服务器',
+      component: MCPConfigForm,
+    },
+    {
+      title: '内置工具',
+      description: '配置和管理内置工具',
+      component: BuiltInToolsForm,
+    },
+    {
+      title: '上下文压缩',
+      description: '配置上下文压缩策略',
+      component: ContextCompressionForm,
     },
   ]
 

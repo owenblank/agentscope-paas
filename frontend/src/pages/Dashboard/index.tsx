@@ -10,13 +10,13 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { agentService } from '@/services'
-import { useAppStore } from '@/store'
+import { useAuthStore } from '@/store'
 
 const { Title, Text, Paragraph } = Typography
 
 const Dashboard = () => {
   const navigate = useNavigate()
-  const { user } = useAppStore()
+  const { user } = useAuthStore()
 
   // Mock数据用于演示
   const mockAgents = [

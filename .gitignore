@@ -65,16 +65,20 @@ data/
 /robust_*.py
 /main.py
 
-# Test results
+# Test results - exclude test results but keep test scripts
+test_results/
 *_results_*.json
 *_test_*.json
 diagnosis_result.json
 frontend_debug_results.json
 page_analysis_results.json
+e2e_report_*.json
+e2e_report_*.txt
 
-# Screenshots
+# Screenshots - exclude most but keep docs screenshots
 *.png
 !docs/screenshots/*.png
+!frontend/public/screenshots/*.png
 *_screenshots/
 e2e_screenshots/
 test_screenshots/
@@ -85,7 +89,23 @@ fixed_*_screenshots/
 perfect_*_screenshots/
 ultimate_*_screenshots/
 
-# E2E test files
+# Important E2E test files to keep
+!e2e/comprehensive_integration_test.py
+!e2e/test_pytest_e2e.py
+!e2e/requirements.txt
+!pytest.ini
+!quick_test.py
+!show_test_results.py
+!monitor_tests.py
+!start_testing_now.py
+!run_integration_tests.sh
+!run_integration_tests.bat
+!docker-compose.test.yml
+!TESTING_README.md
+!INTEGRATION_TEST_GUIDE.md
+!E2E_TEST_SUMMARY.md
+
+# Exclude other test files
 e2e/*.py
 e2e/*.sh
 e2e/*.bat
