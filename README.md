@@ -186,6 +186,9 @@ agentscope-paas/
 #### 仪表板
 ![Dashboard](docs/screenshots/05_dashboard.png)
 
+> **📸 截图说明**: 当前界面截图展示了AgentScope PaaS的主要功能界面。
+> 登录和注册界面提供用户认证功能，仪表板显示系统概览，智能体管理界面支持完整的智能体生命周期管理。
+
 ## 🎯 核心功能
 
 ### 1. Web管理界面
@@ -238,6 +241,7 @@ model_config:
 - ✅ **监控告警**：系统状态监控、异常告警
 - ✅ **记忆模块**：短期记忆、长期记忆、向量记忆
 - ✅ **技能系统**：前端上传技能配置（对齐skill-creator规范）
+- ✅ **上下文压缩**：智能上下文管理，支持语义、Token和混合压缩策略 ⭐ **NEW**
 
 ---
 
@@ -268,6 +272,10 @@ model_config:
 - tool_config: 工具调用配置
 - behavior_config: 行为控制配置
 - monitoring_config: 监控配置
+- **context_compression_config**: 上下文压缩配置 ⭐ **NEW**
+  - 智能上下文压缩，支持语义、Token和混合策略
+  - 作为智能体配置的标准组成部分
+  - 详见 [AGENT_CONFIG_COMPRESSION_GUIDE.md](AGENT_CONFIG_COMPRESSION_GUIDE.md)
 
 ### 多智能体团队配置要点
 
