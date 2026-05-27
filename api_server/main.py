@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Literal
 import uvicorn
 import json
 from datetime import datetime
@@ -93,6 +93,10 @@ class AgentConfig(BaseModel):
     skills_config: Optional[Dict[str, Any]] = None
     behavior_config: Optional[Dict[str, Any]] = None
     monitoring_config: Optional[Dict[str, Any]] = None
+    # New configuration extensions
+    mcp_config: Optional["MCPConfig"] = None
+    built_in_tools_config: Optional["BuiltInToolsConfig"] = None
+    context_compression_config: Optional["ContextCompressionConfig"] = None
 
 class CreateAgentRequest(BaseModel):
     config: AgentConfig
@@ -122,6 +126,104 @@ class SendMessageRequest(BaseModel):
     content: str
     message_type: str = "text"
     metadata: Optional[Dict[str, Any]] = None
+
+# ============================================
+# New Configuration Extension Models
+# ============================================
+
+class MCPConnectionConfig(BaseModel):
+    connection_type: Literal['stdio', 'sse', 'http']
+    command: Optional[str] = None
+    args: Optional[List[str]] = None
+    url: Optional[str] = None
+    headers: Optional[Dict[str, str]] = None
+    timeout: Optional[int] = 30
+    env_vars: Optional[Dict[str, str]] = None
+
+class MCPServerConfig(BaseModel):
+    server_id: str
+    server_name: str
+    description: str
+    connection: MCPConnectionConfig
+    tools: List[str] = []
+    resources: Optional[Dict[str, Any]] = None
+    permissions: Optional[Dict[str, Any]] = None
+    health_check: Optional[Dict[str, Any]] = None
+
+class MCPConfig(BaseModel):
+    enabled: bool = False
+    servers: List[MCPServerConfig] = []
+    global_settings: Optional[Dict[str, Any]] = None
+
+class BuiltInToolParameter(BaseModel):
+    name: str
+    type: Literal['string', 'number', 'boolean', 'object', 'array']
+    required: bool
+    default: Optional[Any] = None
+    description: str
+    validation: Optional[Dict[str, Any]] = None
+
+class BuiltInTool(BaseModel):
+    tool_id: str
+    tool_name: str
+    category: Literal['data_analysis', 'text_processing', 'api_tools', 'file_operations', 'communication', 'web_tools']
+    description: str
+    version: str = "1.0.0"
+    parameters: List[BuiltInToolParameter] = []
+    execution_config: Optional[Dict[str, Any]] = None
+    permissions: Optional[Dict[str, Any]] = None
+    dependencies: Optional[List[str]] = None
+
+class ToolCategory(BaseModel):
+    category_id: str
+    category_name: str
+    description: str
+    tools: List[str] = []
+    icon: Optional[str] = None
+    enabled_by_default: bool = True
+
+class BuiltInToolsConfig(BaseModel):
+    enabled: bool = False
+    available_tools: List[BuiltInTool] = []
+    categories: List[ToolCategory] = []
+    global_restrictions: Optional[Dict[str, Any]] = None
+
+class SemanticCompressionConfig(BaseModel):
+    enabled: bool = True
+    similarity_threshold: float = 0.75
+    preserve_entities: bool = True
+    preserve_keywords: List[str] = []
+    min_summary_length: int = 100
+    max_summary_length: int = 500
+
+class TokenBasedCompressionConfig(BaseModel):
+    enabled: bool = False
+    max_tokens: int = 2000
+    preserve_structure: bool = True
+    priority_sections: List[str] = []
+    compression_ratio: float = 0.5
+
+class HybridCompressionConfig(BaseModel):
+    enabled: bool = True
+    semantic_weight: float = 0.6
+    token_weight: float = 0.4
+    min_context_length: int = 1000
+    adaptive_threshold: float = 0.8
+
+class PriorityRule(BaseModel):
+    rule_id: str
+    rule_name: str
+    priority: int
+    conditions: Dict[str, Any]
+    action: Literal['preserve', 'compress', 'remove']
+
+class ContextCompressionConfig(BaseModel):
+    enabled: bool = False
+    strategies: Dict[str, Any] = {}
+    active_strategy: Literal['semantic', 'token_based', 'hybrid'] = 'hybrid'
+    trigger_conditions: Dict[str, Any] = {}
+    priority_config: Optional[Dict[str, Any]] = None
+    quality_controls: Optional[Dict[str, Any]] = None
 
 # ============================================
 # 辅助函数
@@ -753,6 +855,319 @@ async def test_connection(request: ConnectionTestRequest):
                 "test_message": str(e),
                 "timestamp": datetime.now().isoformat()
             }
+        }
+
+# ============================================
+# MCP Configuration Endpoints
+# ============================================
+
+@app.post("/api/v1/mcp/test-connection")
+async def test_mcp_connection(request: Dict[str, Any]):
+    """测试MCP服务器连接"""
+    try:
+        from agentscope_paas.mcp.client import mcp_client
+
+        server_config = request.get("server_config", {})
+        if not server_config:
+            raise HTTPException(status_code=400, detail="缺少 server_config")
+
+        # Use synchronous wrapper to avoid event loop conflicts
+        result = mcp_client.test_connection_sync(server_config)
+
+        return {
+            "success": result["status"] == "success",
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "data": {
+                "status": "failed",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+
+@app.get("/api/v1/mcp/servers")
+async def list_mcp_servers():
+    """获取可用的MCP服务器列表"""
+    try:
+        from agentscope_paas.mcp.client import mcp_client
+
+        connections = mcp_client.get_all_connections()
+
+        return {
+            "success": True,
+            "data": {
+                "servers": list(connections.values()),
+                "total": len(connections)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取MCP服务器列表失败: {str(e)}"
+        }
+
+@app.post("/api/v1/mcp/servers")
+async def add_mcp_server(request: Dict[str, Any]):
+    """添加新的MCP服务器配置"""
+    try:
+        from agentscope_paas.mcp.client import mcp_client
+
+        server_config = request.get("server_config", {})
+        if not server_config:
+            raise HTTPException(status_code=400, detail="缺少 server_config")
+
+        # Test connection first
+        test_result = await mcp_client.test_connection(server_config)
+        if test_result["status"] != "success":
+            return {
+                "success": False,
+                "message": f"MCP服务器连接测试失败: {test_result.get('error')}"
+            }
+
+        # Establish connection
+        connection_id = mcp_client.connect_to_server_sync(server_config)
+
+        return {
+            "success": True,
+            "data": {
+                "connection_id": connection_id,
+                "server_id": server_config.get("server_id"),
+                "test_result": test_result
+            },
+            "message": "MCP服务器添加成功"
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"添加MCP服务器失败: {str(e)}"
+        }
+
+# ============================================
+# Built-in Tools Endpoints
+# ============================================
+
+@app.get("/api/v1/tools/builtin/registry")
+async def get_builtin_tools_registry():
+    """获取内置工具注册表"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        all_tools = tool_registry.get_all_tools()
+        categories = tool_registry.get_categories()
+
+        return {
+            "success": True,
+            "data": {
+                "tools": all_tools,
+                "categories": categories,
+                "total_tools": len(all_tools)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取工具注册表失败: {str(e)}"
+        }
+
+@app.post("/api/v1/tools/builtin/configure")
+async def configure_builtin_tool(request: Dict[str, Any]):
+    """配置内置工具"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        tool_config = request.get("tool_config", {})
+        if not tool_config:
+            raise HTTPException(status_code=400, detail="缺少 tool_config")
+
+        # Register or update tool
+        success = tool_registry.register_built_in_tool(tool_config)
+
+        if success:
+            return {
+                "success": True,
+                "data": {
+                    "tool_id": tool_config.get("tool_id"),
+                    "tool_name": tool_config.get("tool_name")
+                },
+                "message": "工具配置成功"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "工具配置失败"
+            }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"配置工具失败: {str(e)}"
+        }
+
+@app.get("/api/v1/tools/categories")
+async def get_tool_categories():
+    """获取工具类别列表"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        categories = tool_registry.get_categories()
+
+        return {
+            "success": True,
+            "data": {
+                "categories": list(categories.values()),
+                "total": len(categories)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取工具类别失败: {str(e)}"
+        }
+
+@app.post("/api/v1/tools/{tool_id}/execute")
+async def execute_tool(tool_id: str, request: Dict[str, Any]):
+    """执行工具"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        arguments = request.get("arguments", {})
+        context = request.get("context", {})
+
+        # Execute tool (use synchronous wrapper to avoid event loop conflicts)
+        result = tool_registry.execute_tool_sync(tool_id, arguments, context)
+
+        return {
+            "success": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"工具执行失败: {str(e)}"
+        }
+
+# ============================================
+# Context Compression Endpoints
+# ============================================
+
+@app.post("/api/v1/compression/analyze")
+async def analyze_context_compression(request: Dict[str, Any]):
+    """分析上下文并提供压缩建议"""
+    try:
+        from agentscope_paas.compression.engine import compression_engine
+
+        context = request.get("context", [])
+        compression_config = request.get("compression_config", {})
+
+        if not context:
+            raise HTTPException(status_code=400, detail="缺少 context 参数")
+
+        # Use synchronous wrapper to avoid event loop conflicts
+        analysis = compression_engine.analyze_context_sync(context, compression_config)
+
+        return {
+            "success": True,
+            "data": analysis
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"上下文分析失败: {str(e)}"
+        }
+
+@app.post("/api/v1/compression/preview")
+async def preview_compression(request: Dict[str, Any]):
+    """预览压缩结果"""
+    try:
+        from agentscope_paas.compression.engine import compression_engine
+
+        context = request.get("context", [])
+        compression_config = request.get("compression_config", {})
+
+        if not context:
+            raise HTTPException(status_code=400, detail="缺少 context 参数")
+
+        # Use synchronous wrapper to avoid event loop conflicts
+        result = compression_engine.compress_context_sync(context, compression_config)
+
+        return {
+            "success": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"压缩预览失败: {str(e)}"
+        }
+
+@app.get("/api/v1/compression/strategies")
+async def get_compression_strategies():
+    """获取可用的压缩策略"""
+    try:
+        from agentscope_paas.compression.engine import CompressionStrategy
+
+        strategies = [
+            {
+                "strategy_id": CompressionStrategy.SEMANTIC.value,
+                "name": "Semantic Compression",
+                "description": "基于语义相似度的智能压缩，保留重要信息的同时合并相似内容",
+                "advantages": [
+                    "保持语义完整性",
+                    "智能合并相似消息",
+                    "保留关键实体和关键词"
+                ],
+                "best_for": "需要保持对话语义和上下文连贯性的场景",
+                "compression_ratio": "30-50%"
+            },
+            {
+                "strategy_id": CompressionStrategy.TOKEN_BASED.value,
+                "name": "Token-Based Compression",
+                "description": "基于Token计数的压缩，确保上下文长度在指定限制内",
+                "advantages": [
+                    "精确控制上下文长度",
+                    "保持消息结构",
+                    "优先级排序"
+                ],
+                "best_for": "有严格Token限制的场景",
+                "compression_ratio": "40-60%"
+            },
+            {
+                "strategy_id": CompressionStrategy.HYBRID.value,
+                "name": "Hybrid Compression",
+                "description": "结合语义和Token优势的混合压缩策略",
+                "advantages": [
+                    "平衡压缩质量和长度控制",
+                    "自适应调整",
+                    "最佳综合效果"
+                ],
+                "best_for": "需要平衡压缩质量和长度控制的一般场景",
+                "compression_ratio": "35-55%"
+            }
+        ]
+
+        return {
+            "success": True,
+            "data": {
+                "strategies": strategies,
+                "default_strategy": CompressionStrategy.HYBRID.value
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取压缩策略失败: {str(e)}"
         }
 
 # ============================================

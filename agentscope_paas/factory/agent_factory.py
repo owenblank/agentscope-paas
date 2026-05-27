@@ -22,6 +22,9 @@ except ImportError:
     class ReActAgent:
         pass
 
+    class ChatModelBase:
+        pass
+
     class DashScopeChatModel:
         pass
 

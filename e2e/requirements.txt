@@ -1,0 +1,25 @@
+# AgentScope PaaS 平台 - 端到端测试依赖
+
+# Playwright 浏览器自动化框架
+playwright>=1.40.0
+
+# Python 测试框架
+pytest>=7.4.0
+pytest-playwright>=0.4.0
+
+# 测试报告和工具
+pytest-html>=3.2.0
+pytest-json-report>=1.5.0
+allure-pytest>=2.13.0
+
+# 数据处理和验证
+pyyaml>=6.0.1
+jsonschema>=4.20.0
+
+# 工具库
+python-dotenv>=1.0.0
+requests>=2.31.0
+
+# 日志和调试
+loguru>=0.7.2
+rich>=13.7.0

@@ -1,0 +1,208 @@
+# ============================================
+# AgentScope PaaS 智能体配置示例
+# 展示上下文压缩配置作为标准配置项的集成
+# ============================================
+
+# ============================================
+# 一、基础元信息（必填）
+# ============================================
+agent_metadata:
+  agent_id: "compression_example_001"
+  agent_name: "上下文压缩示例智能体"
+  agent_type: "DialogAgent"
+  description: "演示如何将上下文压缩配置作为智能体配置的标准组成部分"
+  version: "1.0.0"
+  tags:
+    - "上下文压缩"
+    - "配置示例"
+    - "最佳实践"
+
+# ============================================
+# 二、大模型配置（必填）
+# ============================================
+model_config:
+  model_name: "qwen-max"
+  api_key: "sk-your-dashscope-api-key"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  temperature: 0.7
+  max_tokens: 2000
+  top_p: 0.9
+
+# ============================================
+# 三、核心提示词（必填）
+# ============================================
+prompt_config:
+  system_prompt: |
+    你是一个智能对话助手，具备上下文压缩优化功能。
+
+    你的特点：
+    - 能够理解长对话历史
+    - 保持重要信息不丢失
+    - 提供连贯的对话体验
+    - 善于总结和提炼关键信息
+
+    在对话过程中，你会利用上下文压缩技术来：
+    - 保留重要的用户需求和偏好
+    - 维持对话的连贯性
+    - 优化处理长对话场景
+
+  user_prompt_template: "用户：{user_input}\n请基于对话历史提供智能回复。"
+
+# ============================================
+# 四、上下文压缩配置（可选，作为标准配置项）
+# ============================================
+context_compression_config:
+  # 是否启用上下文压缩
+  enabled: true
+
+  # 活跃策略选择：semantic（语义）/ token_based（Token）/ hybrid（混合）
+  active_strategy: "hybrid"
+
+  # 策略配置
+  strategies:
+    # 混合策略（推荐）
+    hybrid:
+      enabled: true
+      semantic_weight: 0.6           # 语义压缩权重 (0-1)
+      token_weight: 0.4              # Token压缩权重 (0-1)
+      min_context_length: 1200       # 启动压缩的最小上下文长度
+      adaptive_threshold: 0.8        # 自适应调整阈值
+
+    # 语义压缩策略
+    semantic:
+      enabled: true
+      similarity_threshold: 0.75     # 相似度阈值 (0-1)
+      preserve_entities: true        # 是否保留命名实体（人名、地名等）
+      preserve_keywords:             # 要保留的关键词列表
+        - "重要"
+        - "关键"
+        - "必须记住"
+        - "用户需求"
+        - "偏好"
+        - "定制"
+      min_summary_length: 120        # 摘要最小长度
+      max_summary_length: 480        # 摘要最大长度
+
+    # 基于Token的压缩策略
+    token_based:
+      enabled: true
+      max_tokens: 2200               # 最大保留Token数
+      preserve_structure: true       # 是否保留消息结构
+      priority_sections:             # 优先保留的章节/部分
+        - "system"
+        - "user"
+        - "important"
+      compression_ratio: 0.45        # 压缩比例 (0-1)
+
+  # 触发条件
+  trigger_conditions:
+    max_context_length: 3500         # 触发压缩的最大上下文长度
+    token_threshold: 2500            # 触发压缩的Token阈值
+    time_interval_minutes: 25        # 压缩时间间隔（分钟，可选）
+    trigger_on_each_turn: false      # 是否在每轮对话后都触发
+
+  # 优先级配置（可选）
+  priority_config:
+    enabled: true
+    preservation_threshold: 0.82     # 保留阈值 (0-1)
+    priority_rules:
+      # 规则1：保留用户明确标记的重要信息
+      - rule_id: "preserve_important"
+        rule_name: "保留重要信息"
+        priority: 10                  # 优先级 (1-10, 10最高)
+        conditions:
+          content_type: ["user_preference", "requirement"]
+          user_tagged: true           # 用户是否明确标记
+          contains_keywords: ["重要", "关键", "必须"]
+        action: "preserve"            # 执行动作：preserve/compress/remove
+
+      # 规则2：压缩中等重要性的历史对话
+      - rule_id: "compress_normal"
+        rule_name: "压缩普通对话"
+        priority: 5
+        conditions:
+          age_range_hours: [8, 48]    # 8-48小时前的对话
+          content_type: ["general_conversation"]
+        action: "compress"
+
+      # 规则3：删除极旧的低价值对话
+      - rule_id: "remove_old"
+        rule_name: "删除旧对话"
+        priority: 1
+        conditions:
+          age_range_hours: [168, 720] # 7-30天前的对话
+          content_type: ["greeting", "casual"]
+        action: "remove"
+
+  # 质量控制
+  quality_controls:
+    min_coherence_score: 0.82        # 最小连贯性分数 (0-1)
+    max_information_loss: 0.18       # 最大信息丢失率 (0-1)
+    enable_validation: true          # 是否启用验证
+    compression_targets:
+      min_compression_ratio: 0.35    # 目标最小压缩比 (0-1)
+      max_compression_ratio: 0.65    # 目标最大压缩比 (0-1)
+
+# ============================================
+# 五、记忆模块配置（可选）
+# ============================================
+memory_config:
+  # 短期记忆
+  short_term:
+    enabled: true
+    max_history_rounds: 12           # 最大历史轮数
+
+  # 长期记忆
+  long_term:
+    enabled: false                    # 本示例禁用长期记忆
+
+  # 向量记忆
+  vector:
+    enabled: false                    # 本示例禁用向量记忆
+
+# ============================================
+# 六、行为控制配置（可选）
+# ============================================
+behavior_config:
+  max_conversation_rounds: 30        # 最大对话轮数
+  auto_reply: true                   # 是否自动回复
+  output_format:
+    type: "text"                     # 输出类型：text/json/markdown
+    include_reasoning: false         # 是否包含推理过程
+    require_citations: false         # 是否要求引用
+
+# ============================================
+# 七、监控与日志配置（可选）
+# ============================================
+monitoring_config:
+  log_level: "INFO"                  # 日志级别：DEBUG/INFO/WARNING/ERROR
+  enable_performance_tracking: true  # 是否启用性能跟踪
+  save_conversation_history: true    # 是否保存对话历史
+  conversation_history_path: "./data/conversations/compression_example/"
+
+# ============================================
+# 配置说明
+# ============================================
+#
+# 本配置文件演示了上下文压缩配置作为智能体配置标准组成部分的完整示例。
+#
+# 主要特点：
+# 1. context_compression_config 与其他配置项并列，作为顶级配置项
+# 2. 配置结构清晰，包含所有必要的参数
+# 3. 使用混合策略，平衡语义理解和Token效率
+# 4. 包含优先级规则，确保重要信息不丢失
+# 5. 设置质量控制参数，保证压缩效果
+#
+# 使用场景：
+# - 长对话场景：当对话历史较长时，自动压缩上下文
+# - 重要信息保留：通过优先级规则保留关键信息
+# - 性能优化：减少Token使用，提高响应速度
+# - 成本控制：在保证质量的前提下降低API调用成本
+#
+# 配置建议：
+# - 初次使用建议使用默认的混合策略
+# - 根据实际对话效果调整相似度阈值和权重
+# - 启用质量控制以确保压缩效果
+# - 在生产环境建议启用优先级配置
+#
+# 详细配置说明请参考：AGENT_CONFIG_COMPRESSION_GUIDE.md

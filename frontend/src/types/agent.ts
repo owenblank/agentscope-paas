@@ -311,6 +311,192 @@ export interface ExtensionConfig {
   }>
 }
 
+// ============================================
+// MCP Configuration Types
+// ============================================
+
+export interface MCPConnectionConfig {
+  connection_type: 'stdio' | 'sse' | 'http'
+  command?: string  // For stdio connections
+  args?: string[]   // For stdio connections
+  url?: string      // For sse/http connections
+  headers?: Record<string, string>  // For sse/http connections
+  timeout?: number
+  env_vars?: Record<string, string>  // Environment variables for stdio
+}
+
+export interface MCPServerConfig {
+  server_id: string
+  server_name: string
+  description: string
+  connection: MCPConnectionConfig
+  tools: string[]  // Tool names provided by this server
+  resources?: {
+    max_memory_mb?: number
+    timeout_seconds?: number
+    max_concurrent_requests?: number
+  }
+  permissions?: {
+    enabled: boolean
+    allowed_tools?: string[]
+    max_calls_per_session?: number
+    security_level?: 'low' | 'medium' | 'high'
+  }
+  health_check?: {
+    enabled: boolean
+    interval_seconds: number
+    max_failures: number
+  }
+}
+
+export interface MCPConfig {
+  enabled: boolean
+  servers: MCPServerConfig[]
+  global_settings: {
+    connection_timeout: number
+    max_concurrent_connections: number
+    enable_tool_logging: boolean
+    retry_config?: {
+      max_retries: number
+      backoff_multiplier: number
+      initial_delay_ms: number
+    }
+  }
+}
+
+// ============================================
+// Built-in Tools Configuration Types
+// ============================================
+
+export interface BuiltInToolParameter {
+  name: string
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array'
+  required: boolean
+  default?: any
+  description: string
+  validation?: {
+    min?: number
+    max?: number
+    pattern?: string
+    enum?: any[]
+  }
+}
+
+export interface BuiltInTool {
+  tool_id: string
+  tool_name: string
+  category: 'data_analysis' | 'text_processing' | 'api_tools' | 'file_operations' | 'communication' | 'web_tools'
+  description: string
+  version: string
+  parameters: BuiltInToolParameter[]
+  execution_config: {
+    timeout: number
+    retry_count: number
+    memory_limit_mb?: number
+    max_output_size?: number
+  }
+  permissions: {
+    enabled: boolean
+    max_calls_per_conversation?: number
+    security_level: 'low' | 'medium' | 'high'
+    require_user_confirmation?: boolean
+  }
+  dependencies?: string[]  // Required libraries/services
+}
+
+export interface ToolCategory {
+  category_id: string
+  category_name: string
+  description: string
+  tools: string[]  // Tool IDs in this category
+  icon?: string
+  enabled_by_default: boolean
+}
+
+export interface BuiltInToolsConfig {
+  enabled: boolean
+  available_tools: BuiltInTool[]
+  categories: ToolCategory[]
+  global_restrictions?: {
+    allowed_categories: string[]
+    max_total_calls_per_conversation: number
+    execution_timeout: number
+    require_user_approval: boolean
+  }
+}
+
+// ============================================
+// Context Compression Configuration Types
+// ============================================
+
+export interface SemanticCompressionConfig {
+  enabled: boolean
+  similarity_threshold: number
+  preserve_entities: boolean
+  preserve_keywords: string[]
+  min_summary_length: number
+  max_summary_length: number
+}
+
+export interface TokenBasedCompressionConfig {
+  enabled: boolean
+  max_tokens: number
+  preserve_structure: boolean
+  priority_sections: string[]  // Sections to preserve
+  compression_ratio: number
+}
+
+export interface HybridCompressionConfig {
+  enabled: boolean
+  semantic_weight: number  // 0-1
+  token_weight: number     // 0-1
+  min_context_length: number
+  adaptive_threshold: number
+}
+
+export interface PriorityRule {
+  rule_id: string
+  rule_name: string
+  priority: number  // Higher = more important to preserve
+  conditions: {
+    content_type?: string[]
+    age_range_hours?: [number, number]
+    user_tagged?: boolean
+    contains_keywords?: string[]
+  }
+  action: 'preserve' | 'compress' | 'remove'
+}
+
+export interface ContextCompressionConfig {
+  enabled: boolean
+  strategies: {
+    semantic: SemanticCompressionConfig
+    token_based: TokenBasedCompressionConfig
+    hybrid: HybridCompressionConfig
+  }
+  active_strategy: 'semantic' | 'token_based' | 'hybrid'
+  trigger_conditions: {
+    max_context_length: number
+    token_threshold: number
+    time_interval_minutes?: number
+    trigger_on_each_turn: boolean
+  }
+  priority_config?: {
+    enabled: boolean
+    priority_rules: PriorityRule[]
+    preservation_threshold: number  // 0-1
+  }
+  quality_controls: {
+    min_coherence_score: number
+    max_information_loss: number
+    enable_validation: boolean
+    compression_targets: {
+      min_compression_ratio: number
+      max_compression_ratio: number
+    }
+  }
+}
+
 export interface AgentConfig {
   agent_metadata: AgentMetadata
   model_config: ModelConfig
@@ -322,6 +508,10 @@ export interface AgentConfig {
   behavior_config?: BehaviorConfig
   monitoring_config?: MonitoringConfig
   extension_config?: ExtensionConfig
+  // New configuration extensions
+  mcp_config?: MCPConfig
+  built_in_tools_config?: BuiltInToolsConfig
+  context_compression_config?: ContextCompressionConfig
 }
 
 export interface Agent {
