@@ -92,6 +92,7 @@ ultimate_*_screenshots/
 # Important E2E test files to keep
 !e2e/comprehensive_integration_test.py
 !e2e/test_pytest_e2e.py
+!e2e/test_config.json
 !e2e/requirements.txt
 !pytest.ini
 !quick_test.py
