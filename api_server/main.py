@@ -7,6 +7,15 @@ import sys
 import os
 from pathlib import Path
 
+# 设置控制台编码以支持emoji字符
+if sys.platform == 'win32':
+    try:
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except:
+        pass
+
 # 添加框架路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -25,9 +34,12 @@ import asyncio
 # from agentscope_paas.core.engine import Engine
 # from agentscope_paas.utils.logger import get_logger
 # from agentscope_paas.core.async_chat_processor import chat_processor
-from agentscope_paas.auth.middleware import set_storage
+from agentscope_paas.auth.middleware import set_storage, get_storage, api_key_auth
 from agentscope_paas.storage.memory import MemoryStorage
 from api_server.routers import auth_router
+from api_server.routers.conversation import router as conversation_router
+from api_server.routers import runtime as runtime_router
+from agentscope_paas.storage.models import User
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -59,6 +71,51 @@ templates_store = {}
 # 认证存储初始化
 auth_storage = MemoryStorage()
 set_storage(auth_storage)
+
+# ============================================
+# Runtime管理初始化
+# ============================================
+
+# Runtime状态跟踪
+runtime_managers: Dict[str, Any] = {}
+
+# ============================================
+# 启动和关闭事件处理
+# ============================================
+
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时的初始化"""
+    print("🚀 AgentScope PaaS API 启动中...")
+    print("📋 Runtime集成已加载")
+
+    # 检查Runtime可用性
+    try:
+        from agentscope_paas.utils.runtime_validator import check_runtime_availability
+        runtime_available = check_runtime_availability()
+        if runtime_available:
+            print("✅ AgentScope Runtime 可用")
+        else:
+            print("⚠️  AgentScope Runtime 不可用 - 安装: pip install agentscope-runtime")
+    except Exception as e:
+        print(f"⚠️  Runtime检查失败: {str(e)}")
+
+    print("✅ AgentScope PaaS API 启动完成")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时的清理"""
+    print("🛑 AgentScope PaaS API 关闭中...")
+
+    # 清理所有Runtime管理器
+    try:
+        from agentscope_paas.core.runtime_manager import cleanup_all_runtime_managers
+        cleanup_all_runtime_managers()
+        print("✅ Runtime管理器已清理")
+    except Exception as e:
+        print(f"⚠️  Runtime清理失败: {str(e)}")
+
+    print("✅ AgentScope PaaS API 关闭完成")
 
 # ============================================
 # 数据模型定义
@@ -97,6 +154,7 @@ class AgentConfig(BaseModel):
     mcp_config: Optional["MCPConfig"] = None
     built_in_tools_config: Optional["BuiltInToolsConfig"] = None
     context_compression_config: Optional["ContextCompressionConfig"] = None
+    session_memory_config: Optional["SessionMemoryConfig"] = None
 
 class CreateAgentRequest(BaseModel):
     config: AgentConfig
@@ -226,6 +284,29 @@ class ContextCompressionConfig(BaseModel):
     quality_controls: Optional[Dict[str, Any]] = None
 
 # ============================================
+# Session Memory Configuration Models
+# ============================================
+
+class RedisConnectionConfig(BaseModel):
+    """Redis连接配置"""
+    host: str = "localhost"
+    port: int = 6379
+    db: int = 0
+    password: Optional[str] = None
+    connection_pool_size: int = 10
+    socket_timeout: int = 5
+    socket_connect_timeout: int = 5
+
+class SessionMemoryConfig(BaseModel):
+    """会话记忆配置"""
+    enabled: bool = False
+    storage_type: Literal['redis', 'memory', 'file'] = 'redis'
+    redis_config: Optional[RedisConnectionConfig] = None
+    ttl: int = 3600  # 会话记忆过期时间（秒）
+    max_messages: int = 100  # 最大保存消息数
+    memory_key_prefix: str = "session_memory"
+
+# ============================================
 # 辅助函数
 # ============================================
 
@@ -327,6 +408,10 @@ load_templates()
 
 # 包含认证路由
 app.include_router(auth_router)
+# 包含对话管理路由
+app.include_router(conversation_router)
+# 包含Runtime管理路由
+app.include_router(runtime_router.router)
 
 # ============================================
 # 根路径处理
@@ -484,8 +569,12 @@ async def create_from_template(template_id: str, customizations: Dict[str, Any])
 # ============================================
 
 @app.get("/api/v1/agents")
-async def get_agents(page: int = 1, limit: int = 20):
-    """获取智能体列表"""
+async def get_agents(
+    page: int = 1,
+    limit: int = 20,
+    current_user: User = Depends(api_key_auth)
+):
+    """获取智能体列表（需要认证）"""
     agents = list(agents_store.values())
 
     # 分页
@@ -520,8 +609,11 @@ async def get_agents(page: int = 1, limit: int = 20):
     }
 
 @app.get("/api/v1/agents/{agent_id}")
-async def get_agent(agent_id: str):
-    """获取智能体详情"""
+async def get_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """获取智能体详情（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -538,8 +630,11 @@ async def get_agent(agent_id: str):
     }
 
 @app.post("/api/v1/agents")
-async def create_agent(request: CreateAgentRequest):
-    """创建智能体"""
+async def create_agent(
+    request: CreateAgentRequest,
+    current_user: User = Depends(api_key_auth)
+):
+    """创建智能体（需要认证）"""
     agent_id = request.config.agent_metadata.agent_id
 
     # 检查是否已存在
@@ -570,8 +665,12 @@ async def create_agent(request: CreateAgentRequest):
     }
 
 @app.put("/api/v1/agents/{agent_id}")
-async def update_agent(agent_id: str, request: Dict[str, Any]):
-    """更新智能体"""
+async def update_agent(
+    agent_id: str,
+    request: Dict[str, Any],
+    current_user: User = Depends(api_key_auth)
+):
+    """更新智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -595,8 +694,11 @@ async def update_agent(agent_id: str, request: Dict[str, Any]):
     }
 
 @app.delete("/api/v1/agents/{agent_id}")
-async def delete_agent(agent_id: str):
-    """删除智能体"""
+async def delete_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """删除智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -614,8 +716,11 @@ async def delete_agent(agent_id: str):
     }
 
 @app.post("/api/v1/agents/{agent_id}/start")
-async def start_agent(agent_id: str):
-    """启动智能体"""
+async def start_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """启动智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -643,8 +748,11 @@ async def start_agent(agent_id: str):
         }
 
 @app.post("/api/v1/agents/{agent_id}/stop")
-async def stop_agent(agent_id: str):
-    """停止智能体"""
+async def stop_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """停止智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -1056,6 +1164,56 @@ async def execute_tool(tool_id: str, request: Dict[str, Any]):
         }
 
 # ============================================
+# Session Memory Endpoints
+# ============================================
+
+@app.post("/api/v1/test-redis")
+async def test_redis_connection(request: Dict[str, Any]):
+    """测试Redis连接"""
+    try:
+        from agentscope_paas.storage.redis_storage import RedisStorageBackend, RedisConfig
+
+        redis_config_data = request.get("redis_config", {})
+        if not redis_config_data:
+            raise HTTPException(status_code=400, detail="缺少 redis_config 参数")
+
+        # 创建Redis配置
+        redis_config = RedisConfig(
+            host=redis_config_data.get("host", "localhost"),
+            port=redis_config_data.get("port", 6379),
+            db=redis_config_data.get("db", 0),
+            password=redis_config_data.get("password"),
+            connection_pool_size=redis_config_data.get("connection_pool_size", 10),
+            socket_timeout=redis_config_data.get("socket_timeout", 5),
+            socket_connect_timeout=redis_config_data.get("socket_connect_timeout", 5)
+        )
+
+        # 测试连接
+        backend = RedisStorageBackend(redis_config)
+        health_info = backend.health_check()
+
+        if health_info["status"] == "healthy":
+            return {
+                "success": True,
+                "data": health_info,
+                "message": "Redis连接成功"
+            }
+        else:
+            return {
+                "success": False,
+                "data": health_info,
+                "message": f"Redis连接失败: {health_info.get('message', '未知错误')}"
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Redis连接测试失败: {str(e)}"
+        }
+
+# ============================================
 # Context Compression Endpoints
 # ============================================
 
@@ -1175,8 +1333,12 @@ async def get_compression_strategies():
 # ============================================
 
 @app.post("/api/v1/agents/{agent_id}/conversations")
-async def create_conversation(agent_id: str, request: CreateConversationRequest):
-    """创建对话会话"""
+async def create_conversation(
+    agent_id: str,
+    request: CreateConversationRequest,
+    current_user: User = Depends(api_key_auth)
+):
+    """创建对话会话（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
