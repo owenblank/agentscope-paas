@@ -1,0 +1,478 @@
+# ============================================
+# AgentScope PaaS 技能配置模板
+# ============================================
+# 说明：此模板用于定义智能体的专业技能，支持从./skills/目录批量加载
+# 使用方法：复制此文件并重命名，替换所有 {{占位符}} 为实际配置值
+
+# ============================================
+# 一、技能基础信息（必填）
+# ============================================
+skill_metadata:
+  # 技能唯一标识符（必填，字符串格式，文件名即为技能ID）
+  skill_id: "{{技能唯一ID，如：text_processing}}"
+
+  # 技能名称（必填，字符串格式，用于显示和识别）
+  skill_name: "{{技能名称，如：文本处理技能}}"
+
+  # 技能类型（必填，枚举值，定义技能的分类）
+  # 可选值：
+  #   - text_analysis: 文本分析类技能
+  #   - data_processing: 数据处理类技能
+  #   - api_tool: API工具类技能
+  #   - code_execution: 代码执行类技能
+  #   - database_query: 数据库查询类技能
+  #   - knowledge_retrieval: 知识检索类技能
+  #   - communication: 通信协作类技能
+  #   - analysis: 分析类技能
+  #   - generation: 生成类技能
+  skill_type: "{{技能类型，如：text_analysis}}"
+
+  # 技能版本（必填，字符串格式，用于版本管理）
+  version: "1.0.0"
+
+  # 技能描述（必填，字符串格式，详细描述技能的功能和用途）
+  description: "{{技能功能描述，如：提供文本摘要、分类、关键词提取等文本处理能力}}"
+
+  # 技能标签（可选，字符串数组，用于分类和检索）
+  tags:
+    - "{{标签1，如：nlp}}"
+    - "{{标签2，如：文本处理}}"
+
+  # 作者信息（可选）
+  author:
+    name: "{{作者名称}}"
+    email: "{{作者邮箱}}"
+    organization: "{{所属组织}}"
+
+# ============================================
+# 二、技能能力定义（必填）
+# ============================================
+# 说明：定义技能支持的具体操作和功能
+capabilities:
+  # 支持的操作列表（必填，对象数组）
+  operations:
+    # 操作1（示例：文本摘要）
+    - operation_id: "{{操作ID，如：summarization}}"
+      operation_name: "{{操作名称，如：文本摘要}}"
+      # 操作描述（必填，用于LLM理解操作用途）
+      description: "{{操作功能描述，如：对长文本进行摘要，提取关键信息}}"
+      # 是否启用（必填，布尔值）
+      enabled: true
+      # 操作参数配置（必填，定义操作的具体参数）
+      parameters:
+        # 输入参数
+        input_schema:
+          type: "object"
+          properties:
+            text:
+              type: "string"
+              description: "需要处理的文本内容"
+              max_length: 10000
+            max_length:
+              type: "integer"
+              description: "摘要的最大长度"
+              default: 500
+              minimum: 100
+              maximum: 2000
+            style:
+              type: "string"
+              description: "摘要风格"
+              enum: ["concise", "detailed", "bullet_points"]
+              default: "concise"
+          required:
+            - "text"
+
+        # 输出参数
+        output_schema:
+          type: "object"
+          properties:
+            summary:
+              type: "string"
+              description: "生成的摘要内容"
+            key_points:
+              type: "array"
+              items:
+                type: "string"
+              description: "提取的关键点列表"
+            original_length:
+              type: "integer"
+              description: "原文长度"
+            summary_length:
+              type: "integer"
+              description: "摘要长度"
+
+      # 执行配置（可选）
+      execution_config:
+        # 超时时间（秒）
+        timeout: 30
+        # 重试次数
+        max_retries: 2
+        # 内存限制
+        memory_limit: "512MB"
+        # 并发执行
+        allow_parallel: false
+
+    # 操作2（示例：情感分析）
+    - operation_id: "{{操作ID，如：sentiment_analysis}}"
+      operation_name: "{{操作名称，如：情感分析}}"
+      description: "{{操作功能描述，如：分析文本的情感倾向}}"
+      enabled: true
+      parameters:
+        input_schema:
+          type: "object"
+          properties:
+            text:
+              type: "string"
+              description: "需要分析的文本"
+              max_length: 5000
+            language:
+              type: "string"
+              description: "文本语言"
+              default: "zh-CN"
+              enum: ["zh-CN", "en-US", "ja-JP", "ko-KR"]
+          required:
+            - "text"
+
+        output_schema:
+          type: "object"
+          properties:
+            sentiment:
+              type: "string"
+              description: "情感分类"
+              enum: ["positive", "negative", "neutral"]
+            confidence:
+              type: "number"
+              description: "置信度"
+              minimum: 0.0
+              maximum: 1.0
+            emotions:
+              type: "object"
+              description: "详细情感分析"
+              properties:
+                joy:
+                  type: "number"
+                  minimum: 0.0
+                  maximum: 1.0
+                sadness:
+                  type: "number"
+                  minimum: 0.0
+                  maximum: 1.0
+                anger:
+                  type: "number"
+                  minimum: 0.0
+                  maximum: 1.0
+                fear:
+                  type: "number"
+                  minimum: 0.0
+                  maximum: 1.0
+
+      execution_config:
+        timeout: 15
+        max_retries: 1
+
+# ============================================
+# 三、技能实现配置（可选）
+# ============================================
+# 说明：定义技能的具体实现方式
+implementation:
+  # 实现类型（必填，枚举值）
+  # 可选值：
+  #   - function_call: 函数调用实现
+  #   - api_call: API调用实现
+  #   - code_execution: 代码执行实现
+  #   - database_query: 数据库查询实现
+  #   - local_script: 本地脚本实现
+  implementation_type: "{{实现类型，如：function_call}}"
+
+  # 函数调用配置（当implementation_type为function_call时）
+  function_config:
+    # 函数名称（必填）
+    function_name: "{{函数名称，如：summarize_text}}"
+    # 函数描述（必填，用于LLM理解）
+    function_description: "{{函数描述，如：对文本进行摘要处理}}"
+    # 函数参数（必填，JSON Schema格式）
+    function_parameters:
+      type: "object"
+      properties:
+        text:
+          type: "string"
+          description: "需要摘要的文本"
+        max_length:
+          type: "integer"
+          description: "摘要最大长度"
+          default: 500
+      required:
+        - "text"
+
+  # API调用配置（当implementation_type为api_call时）
+  api_config:
+    # API端点
+    endpoint: "{{API端点URL}}"
+    # 请求方法
+    method: "{{HTTP方法，如：POST}}"
+    # 请求头
+    headers:
+      Content-Type: "application/json"
+      Authorization: "Bearer {{token}}"
+    # 认证配置
+    authentication:
+      type: "{{认证类型，如：bearer_token}}"
+      credentials:
+        token: "{{访问令牌}}"
+        api_key: "{{API密钥}}"
+    # 超时配置
+    timeout: 30
+
+  # 代码执行配置（当implementation_type为code_execution时）
+  code_execution_config:
+    # 运行时环境
+    runtime: "{{运行时，如：python3.9}}"
+    # 沙箱配置
+    sandbox:
+      enabled: true
+      network_access: false
+      file_system_access: "restricted"
+    # 资源限制
+    resource_limits:
+      max_memory: "1GB"
+      max_execution_time: 60
+      max_cpu_percent: 80
+    # 允许的包
+    allowed_packages:
+      - "{{允许的Python包1，如：numpy}}"
+      - "{{允许的Python包2，如：pandas}}"
+
+# ============================================
+# 四、性能配置（可选）
+# ============================================
+performance_config:
+  # 最大并发操作数
+  max_concurrent_operations: 5
+
+  # 操作超时配置
+  timeout_config:
+    default_timeout: 30
+    operation_specific_timeouts:
+      "{{操作ID1}}": 60
+      "{{操作ID2}}": 15
+
+  # 资源限制
+  resource_limits:
+    max_memory_usage: "1GB"
+    max_cpu_usage: 80
+    max_network_bandwidth: "100MB/s"
+
+  # 缓存配置
+  cache_config:
+    enabled: true
+    cache_type: "memory"  # memory, redis, file
+    cache_ttl: 3600  # 缓存过期时间（秒）
+    max_cache_size: 1000
+
+# ============================================
+# 五、安全配置（可选）
+# ============================================
+security_config:
+  # 安全级别（必填，枚举值）
+  # 可选值：
+  #   - low: 低安全级别，适用于公开数据
+  #   - medium: 中安全级别，适用于一般业务数据
+  #   - high: 高安全级别，适用于敏感数据
+  #   - critical: 严重安全级别，适用于高度敏感数据
+  security_level: "{{安全级别，如：medium}}"
+
+  # 数据加密配置
+  encryption_config:
+    # 是否加密传输数据
+    encrypt_in_transit: true
+    # 是否加密存储数据
+    encrypt_at_rest: false
+    # 加密算法
+    encryption_algorithm: "AES-256"
+
+  # 访问控制配置
+  access_control:
+    # 允许的用户角色
+    allowed_roles:
+      - "{{允许的角色1}}"
+      - "{{允许的角色2}}"
+
+    # IP白名单
+    ip_whitelist:
+      - "{{允许的IP地址1}}"
+      - "{{允许的IP地址2}}"
+
+    # 时间限制
+    time_restrictions:
+      allowed_hours:
+        start: "00:00"
+        end: "23:59"
+      allowed_days:
+        - "Monday"
+        - "Tuesday"
+        - "Wednesday"
+        - "Thursday"
+        - "Friday"
+        - "Saturday"
+        - "Sunday"
+
+# ============================================
+# 六、监控配置（可选）
+# ============================================
+monitoring_config:
+  # 是否启用监控
+  enabled: true
+
+  # 监控指标
+  metrics:
+    # 调用次数统计
+    call_count: true
+    # 执行时间统计
+    execution_time: true
+    # 成功率统计
+    success_rate: true
+    # 错误统计
+    error_tracking: true
+    # 资源使用统计
+    resource_usage: true
+
+  # 日志配置
+  logging_config:
+    # 日志级别
+    log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+    # 是否记录输入输出
+    log_input_output: false
+    # 是否记录详细错误信息
+    log_error_details: true
+    # 日志保留时间（天）
+    log_retention_days: 30
+
+# ============================================
+# 七、依赖配置（可选）
+# ============================================
+dependencies:
+  # 系统依赖
+  system_dependencies:
+    - "{{系统依赖1，如：python3.9+}}"
+    - "{{系统依赖2，如：libssl-dev}}"
+
+  # Python包依赖
+  python_packages:
+    - package_name: "{{包名，如：numpy}}"
+      version: "{{版本要求，如：>=1.20.0}}"
+      optional: false
+    - package_name: "{{包名，如：pandas}}"
+      version: "{{版本要求，如：>=1.3.0}}"
+      optional: false
+
+  # 外部服务依赖
+  external_services:
+    - service_name: "{{服务名，如：openai_api}}"
+      service_url: "{{服务URL}}"
+      required: true
+      fallback_strategy: "{{降级策略，如：use_cached_result}}"
+
+# ============================================
+# 八、错误处理配置（可选）
+# ============================================
+error_handling:
+  # 错误处理策略（必填，枚举值）
+  # 可选值：
+  #   - fail_fast: 快速失败，立即返回错误
+  #   - retry_with_backoff: 重试并退避
+  #   - fallback: 使用降级方案
+  #   - ignore: 忽略错误继续执行
+  strategy: "{{错误处理策略，如：retry_with_backoff}}"
+
+  # 重试配置
+  retry_config:
+    # 最大重试次数
+    max_retries: 3
+    # 初始重试延迟（毫秒）
+    initial_delay: 1000
+    # 退避乘数
+    backoff_multiplier: 2
+    # 最大重试延迟（毫秒）
+    max_delay: 10000
+
+  # 降级配置
+  fallback_config:
+    # 是否启用降级
+    enable_fallback: true
+    # 降级操作
+    fallback_operations:
+      - operation_id: "{{操作ID}}"
+        fallback_strategy: "{{降级策略，如：use_cached_result}}"
+      - operation_id: "{{操作ID}}"
+        fallback_strategy: "{{降级策略，如：return_default_value}}"
+
+# ============================================
+# 九、测试配置（可选）
+# ============================================
+testing_config:
+  # 测试用例
+  test_cases:
+    - test_name: "{{测试用例名称}}"
+      test_description: "{{测试描述}}"
+      operation_id: "{{操作ID}}"
+      input:
+        "{{参数名1}}": "{{测试值1}}"
+        "{{参数名2}}": "{{测试值2}}"
+      expected_output:
+        "{{输出字段1}}": "{{期望值1}}"
+        "{{输出字段2}}": "{{期望值2}}"
+      assertions:
+        - type: "{{断言类型，如：equals}}"
+          field: "{{字段名}}"
+          expected_value: "{{期望值}}"
+
+  # 性能测试
+  performance_tests:
+    - test_name: "{{性能测试名称}}"
+      operation_id: "{{操作ID}}"
+      load_config:
+        concurrent_requests: 10
+        total_requests: 100
+        duration_seconds: 60
+      performance_expectations:
+        max_response_time_ms: 1000
+        min_success_rate: 0.95
+        max_error_rate: 0.05
+
+# ============================================
+# 十、文档配置（可选）
+# ============================================
+documentation:
+  # 使用文档
+  usage_documentation: |
+    {{使用文档内容
+    例如：
+    ## 使用方法
+
+    1. 文本摘要功能：
+       输入：需要摘要的文本
+       输出：摘要结果
+
+    2. 情感分析功能：
+       输入：需要分析的文本
+       输出：情感分类结果
+    }}
+
+  # 示例代码
+  examples:
+    - example_name: "{{示例名称}}"
+      description: "{{示例描述}}"
+      operation_id: "{{操作ID}}"
+      input_example:
+        "{{参数名1}}": "{{示例值1}}"
+        "{{参数名2}}": "{{示例值2}}"
+      output_example:
+        "{{输出字段1}}": "{{示例输出1}}"
+        "{{输出字段2}}": "{{示例输出2}}"
+
+  # 常见问题
+  faq:
+    - question: "{{常见问题1}}"
+      answer: "{{问题答案1}}"
+    - question: "{{常见问题2}}"
+      answer: "{{问题答案2}}"

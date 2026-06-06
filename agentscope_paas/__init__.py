@@ -11,7 +11,7 @@ AgentScope-PaaS: 基于AgentScope的PaaS化智能体框架
 - 生产级: 完整的错误处理、日志记录、配置验证
 """
 
-__version__ = "1.0.0"
+__version__ = "0.1.0"
 __author__ = "AgentScope PaaS Team"
 
 from .config.loader import ConfigLoader

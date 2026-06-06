@@ -1,0 +1,25 @@
+{
+  "test_environment": {
+    "frontend_url": "http://localhost:3005",
+    "backend_url": "http://localhost:8000",
+    "timeout": 5000
+  },
+  "test_user": {
+    "email": "test@example.com",
+    "password": "Test123456",
+    "auto_create": true
+  },
+  "test_settings": {
+    "headless": false,
+    "browser": "chromium",
+    "slow_mo": 500,
+    "screenshot_directory": "e2e_screenshots",
+    "report_directory": "e2e_reports"
+  },
+  "test_agent": {
+    "agent_name": "测试智能体",
+    "agent_type": "chat",
+    "model_name": "gpt-3.5-turbo",
+    "system_prompt": "你是一个有用的AI助手。"
+  }
+}

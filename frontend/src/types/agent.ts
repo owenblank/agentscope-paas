@@ -311,6 +311,215 @@ export interface ExtensionConfig {
   }>
 }
 
+// ============================================
+// MCP Configuration Types
+// ============================================
+
+export interface MCPConnectionConfig {
+  connection_type: 'stdio' | 'sse' | 'http'
+  command?: string  // For stdio connections
+  args?: string[]   // For stdio connections
+  url?: string      // For sse/http connections
+  headers?: Record<string, string>  // For sse/http connections
+  timeout?: number
+  env_vars?: Record<string, string>  // Environment variables for stdio
+}
+
+export interface MCPServerConfig {
+  server_id: string
+  server_name: string
+  description: string
+  connection: MCPConnectionConfig
+  tools: string[]  // Tool names provided by this server
+  resources?: {
+    max_memory_mb?: number
+    timeout_seconds?: number
+    max_concurrent_requests?: number
+  }
+  permissions?: {
+    enabled: boolean
+    allowed_tools?: string[]
+    max_calls_per_session?: number
+    security_level?: 'low' | 'medium' | 'high'
+  }
+  health_check?: {
+    enabled: boolean
+    interval_seconds: number
+    max_failures: number
+  }
+}
+
+export interface MCPConfig {
+  enabled: boolean
+  servers: MCPServerConfig[]
+  global_settings: {
+    connection_timeout: number
+    max_concurrent_connections: number
+    enable_tool_logging: boolean
+    retry_config?: {
+      max_retries: number
+      backoff_multiplier: number
+      initial_delay_ms: number
+    }
+  }
+}
+
+// ============================================
+// Built-in Tools Configuration Types
+// ============================================
+
+export interface BuiltInToolParameter {
+  name: string
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array'
+  required: boolean
+  default?: any
+  description: string
+  validation?: {
+    min?: number
+    max?: number
+    pattern?: string
+    enum?: any[]
+  }
+}
+
+export interface BuiltInTool {
+  tool_id: string
+  tool_name: string
+  category: 'data_analysis' | 'text_processing' | 'api_tools' | 'file_operations' | 'communication' | 'web_tools'
+  description: string
+  version: string
+  parameters: BuiltInToolParameter[]
+  execution_config: {
+    timeout: number
+    retry_count: number
+    memory_limit_mb?: number
+    max_output_size?: number
+  }
+  permissions: {
+    enabled: boolean
+    max_calls_per_conversation?: number
+    security_level: 'low' | 'medium' | 'high'
+    require_user_confirmation?: boolean
+  }
+  dependencies?: string[]  // Required libraries/services
+}
+
+export interface ToolCategory {
+  category_id: string
+  category_name: string
+  description: string
+  tools: string[]  // Tool IDs in this category
+  icon?: string
+  enabled_by_default: boolean
+}
+
+export interface BuiltInToolsConfig {
+  enabled: boolean
+  available_tools: BuiltInTool[]
+  categories: ToolCategory[]
+  global_restrictions?: {
+    allowed_categories: string[]
+    max_total_calls_per_conversation: number
+    execution_timeout: number
+    require_user_approval: boolean
+  }
+}
+
+// ============================================
+// Context Compression Configuration Types
+// ============================================
+
+export interface SemanticCompressionConfig {
+  enabled: boolean
+  similarity_threshold: number
+  preserve_entities: boolean
+  preserve_keywords: string[]
+  min_summary_length: number
+  max_summary_length: number
+}
+
+export interface TokenBasedCompressionConfig {
+  enabled: boolean
+  max_tokens: number
+  preserve_structure: boolean
+  priority_sections: string[]  // Sections to preserve
+  compression_ratio: number
+}
+
+export interface HybridCompressionConfig {
+  enabled: boolean
+  semantic_weight: number  // 0-1
+  token_weight: number     // 0-1
+  min_context_length: number
+  adaptive_threshold: number
+}
+
+export interface PriorityRule {
+  rule_id: string
+  rule_name: string
+  priority: number  // Higher = more important to preserve
+  conditions: {
+    content_type?: string[]
+    age_range_hours?: [number, number]
+    user_tagged?: boolean
+    contains_keywords?: string[]
+  }
+  action: 'preserve' | 'compress' | 'remove'
+}
+
+export interface ContextCompressionConfig {
+  enabled: boolean
+  strategies: {
+    semantic: SemanticCompressionConfig
+    token_based: TokenBasedCompressionConfig
+    hybrid: HybridCompressionConfig
+  }
+  active_strategy: 'semantic' | 'token_based' | 'hybrid'
+  trigger_conditions: {
+    max_context_length: number
+    token_threshold: number
+    time_interval_minutes?: number
+    trigger_on_each_turn: boolean
+  }
+  priority_config?: {
+    enabled: boolean
+    priority_rules: PriorityRule[]
+    preservation_threshold: number  // 0-1
+  }
+  quality_controls: {
+    min_coherence_score: number
+    max_information_loss: number
+    enable_validation: boolean
+    compression_targets: {
+      min_compression_ratio: number
+      max_compression_ratio: number
+    }
+  }
+}
+
+// ============================================
+// Session Memory Configuration Types
+// ============================================
+
+export interface RedisConnectionConfig {
+  host: string
+  port: number
+  db: number
+  password?: string
+  connection_pool_size: number
+  socket_timeout: number
+  socket_connect_timeout: number
+}
+
+export interface SessionMemoryConfig {
+  enabled: boolean
+  storage_type: 'redis' | 'memory' | 'file'
+  redis_config?: RedisConnectionConfig
+  ttl: number
+  max_messages: number
+  memory_key_prefix: string
+}
+
 export interface AgentConfig {
   agent_metadata: AgentMetadata
   model_config: ModelConfig
@@ -322,6 +531,11 @@ export interface AgentConfig {
   behavior_config?: BehaviorConfig
   monitoring_config?: MonitoringConfig
   extension_config?: ExtensionConfig
+  // New configuration extensions
+  mcp_config?: MCPConfig
+  built_in_tools_config?: BuiltInToolsConfig
+  context_compression_config?: ContextCompressionConfig
+  session_memory_config?: SessionMemoryConfig
 }
 
 export interface Agent {
@@ -346,6 +560,146 @@ export interface AgentStatistics {
   total_cost: number
   average_response_time: number
   success_rate: number
+}
+
+// ============================================
+// Runtime Configuration Types
+// ============================================
+
+export type RuntimeDeploymentMode = 'traditional' | 'runtime' | 'hybrid'
+
+export interface RuntimeServiceConfig {
+  host: string
+  port: number
+  max_concurrent_requests?: number
+  startup_timeout?: number
+  request_timeout?: number
+  enable_cors?: boolean
+  cors_origins?: string[]
+}
+
+export interface RuntimeLifecycleConfig {
+  auto_start: boolean
+  auto_stop: boolean
+  idle_timeout_minutes: number
+  graceful_shutdown_timeout: number
+  max_retries: number
+  retry_delay_seconds: number
+  health_check_on_failure: boolean
+}
+
+export interface RuntimeHealthCheckConfig {
+  enabled: boolean
+  interval_seconds: number
+  timeout_seconds: number
+  failure_threshold: number
+  success_threshold: number
+  check_dependencies?: boolean
+  custom_checks?: string[]
+}
+
+export interface RuntimeStreamingConfig {
+  enabled: boolean
+  chunk_size: number
+  buffer_size: number
+  keepalive_interval: number
+  timeout_seconds: number
+}
+
+export interface RuntimeSandboxConfig {
+  enabled: boolean
+  sandbox_type: 'docker' | 'process' | 'thread' | 'none'
+  image?: string
+  memory_limit_mb?: number
+  cpu_limit?: number
+  timeout_seconds?: number
+  allowed_operations?: string[]
+  restricted_paths?: string[]
+}
+
+export interface RuntimeMonitoringConfig {
+  enable_metrics: boolean
+  log_level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR'
+  metrics_port?: number
+  prometheus_enabled?: boolean
+  custom_metrics?: string[]
+}
+
+export interface RuntimeConfig {
+  deployment_mode: RuntimeDeploymentMode
+  service_config: RuntimeServiceConfig
+  lifecycle_config: RuntimeLifecycleConfig
+  health_check_config: RuntimeHealthCheckConfig
+  streaming_config: RuntimeStreamingConfig
+  sandbox_config: RuntimeSandboxConfig
+  monitoring_config: RuntimeMonitoringConfig
+  custom_decorators?: string[]
+  middleware?: string[]
+  environment_variables?: Record<string, string>
+}
+
+export interface RuntimeDeploymentStatus {
+  agent_id: string
+  deployment_status: 'not_deployed' | 'deployed' | 'deploying' | 'stopping' | 'error' | 'stopped'
+  deployment_url?: string
+  deployment_port?: number
+  health_status: 'unknown' | 'healthy' | 'unhealthy' | 'error'
+  last_health_check?: string
+  auto_start: boolean
+  idle_timeout_minutes: number
+  runtime_available: boolean
+  last_activity?: string
+  uptime_minutes?: number
+  idle_minutes?: number
+}
+
+export interface RuntimeChatResponse {
+  success: boolean
+  agent_id: string
+  response?: string
+  stream_url?: string
+  error?: string
+  timestamp: string
+}
+
+export interface RuntimeDeployResponse {
+  success: boolean
+  agent_id: string
+  deployment_url?: string
+  deployment_status: string
+  message: string
+  runtime_available: boolean
+}
+
+export interface RuntimeHealthResponse {
+  agent_id: string
+  status: string
+  deployment_status: string
+  last_check: string
+  deployment_url?: string
+  uptime_minutes?: number
+  idle_minutes?: number
+  runtime_available: boolean
+}
+
+// Update AgentConfig to include runtime_config
+export interface AgentConfig {
+  agent_metadata: AgentMetadata
+  model_config: ModelConfig
+  prompt_config: PromptConfig
+  memory_config?: MemoryConfig
+  tool_config?: ToolConfig
+  knowledge_config?: KnowledgeConfig
+  skills_config?: SkillsConfig
+  behavior_config?: BehaviorConfig
+  monitoring_config?: MonitoringConfig
+  extension_config?: ExtensionConfig
+  // New configuration extensions
+  mcp_config?: MCPConfig
+  built_in_tools_config?: BuiltInToolsConfig
+  context_compression_config?: ContextCompressionConfig
+  session_memory_config?: SessionMemoryConfig
+  runtime_config?: RuntimeConfig  // New: Runtime configuration
 }
 
 export interface AgentListResponse {

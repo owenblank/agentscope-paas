@@ -22,6 +22,9 @@ except ImportError:
     class ReActAgent:
         pass
 
+    class ChatModelBase:
+        pass
+
     class DashScopeChatModel:
         pass
 
@@ -42,6 +45,7 @@ except ImportError:
 from ..config.loader import ConfigLoader
 from ..utils.logger import get_logger
 from ..utils.exceptions import AgentCreationError
+from ..memory.session_memory_service import session_memory_service
 
 
 class AgentFactory:
@@ -57,9 +61,17 @@ class AgentFactory:
         self.config_loader = config_loader
         self.logger = get_logger(__name__)
 
-    def create_agent(self) -> Optional[Agent]:
+    def create_agent(
+        self,
+        user_id: str = "default_user",
+        session_id: str = "default_session"
+    ) -> Optional[Agent]:
         """
         根据配置创建智能体
+
+        Args:
+            user_id: 用户ID（用于会话记忆）
+            session_id: 会话ID（用于会话记忆）
 
         Returns:
             创建的智能体实例，失败返回None
@@ -84,12 +96,23 @@ class AgentFactory:
             # 创建模型配置
             model_kwargs = self._prepare_model_config(model_config)
 
+            # 获取完整配置用于记忆初始化
+            full_config = self.config_loader.get_full_config()
+
+            # 准备记忆配置
+            memory_instance = self._prepare_memory_config(
+                full_config,
+                user_id,
+                session_id
+            )
+
             # 创建智能体 - 统一使用ReActAgent
             if agent_type == "ReActAgent":
                 agent = self._create_react_agent(
                     metadata,
                     model_config,
-                    prompt_config
+                    prompt_config,
+                    memory_instance
                 )
             else:
                 # 对于DialogAgent和其他类型，都使用ReActAgent
@@ -97,7 +120,8 @@ class AgentFactory:
                 agent = self._create_dialog_agent(
                     metadata,
                     model_config,
-                    prompt_config
+                    prompt_config,
+                    memory_instance
                 )
 
             if agent:
@@ -115,7 +139,8 @@ class AgentFactory:
         self,
         metadata: Dict[str, Any],
         model_config: Dict[str, Any],
-        prompt_config: Dict[str, Any]
+        prompt_config: Dict[str, Any],
+        memory_instance: Any = None
     ) -> Optional[AgentBase]:
         """
         创建ReActAgent推理行动智能体
@@ -124,6 +149,7 @@ class AgentFactory:
             metadata: 智能体元数据
             model_config: 模型配置
             prompt_config: 提示词配置
+            memory_instance: 记忆实例（可选）
 
         Returns:
             AgentBase实例 (实际是ReActAgent)
@@ -156,6 +182,11 @@ class AgentFactory:
                 "formatter": formatter_instance
             }
 
+            # 如果提供了记忆实例，添加到参数中
+            if memory_instance is not None:
+                agent_kwargs["memory"] = memory_instance
+                self.logger.info(f"为智能体 {agent_name} 添加了记忆实例")
+
             # 创建ReActAgent
             agent = ReActAgent(**agent_kwargs)
 
@@ -172,7 +203,8 @@ class AgentFactory:
         self,
         metadata: Dict[str, Any],
         model_config: Dict[str, Any],
-        prompt_config: Dict[str, Any]
+        prompt_config: Dict[str, Any],
+        memory_instance: Any = None
     ) -> Optional[AgentBase]:
         """
         创建对话智能体 (使用ReActAgent实现)
@@ -181,6 +213,7 @@ class AgentFactory:
             metadata: 智能体元数据
             model_config: 模型配置
             prompt_config: 提示词配置
+            memory_instance: 记忆实例（可选）
 
         Returns:
             AgentBase实例 (实际是ReActAgent)
@@ -212,6 +245,11 @@ class AgentFactory:
                 "model": model_instance,
                 "formatter": formatter_instance
             }
+
+            # 如果提供了记忆实例，添加到参数中
+            if memory_instance is not None:
+                agent_kwargs["memory"] = memory_instance
+                self.logger.info(f"为智能体 {agent_name} 添加了记忆实例")
 
             # 使用ReActAgent创建对话智能体
             agent = ReActAgent(**agent_kwargs)
@@ -401,6 +439,97 @@ class AgentFactory:
             return agent
         except Exception as e:
             self.logger.error(f"创建带记忆的智能体失败: {str(e)}")
+            return None
+
+    def _prepare_memory_config(
+        self,
+        config: Dict[str, Any],
+        user_id: str = "default_user",
+        session_id: str = "default_session"
+    ) -> Any:
+        """
+        准备记忆配置，创建AgentScope兼容的记忆对象
+
+        Args:
+            config: 智能体配置
+            user_id: 用户ID
+            session_id: 会话ID
+
+        Returns:
+            记忆对象实例
+        """
+        try:
+            # 检查是否启用了会话记忆
+            session_memory_config = config.get('session_memory_config', {})
+
+            if not session_memory_config or not session_memory_config.get('enabled', False):
+                # 默认使用内存记忆
+                self.logger.info("使用内存记忆存储")
+                if 'InMemoryMemory' in locals():
+                    return InMemoryMemory()
+                else:
+                    # 返回None，让AgentScope使用默认记忆
+                    return None
+
+            # 准备记忆配置字典
+            memory_config_dict = {
+                'session_memory': {
+                    'enabled': True,
+                    'storage_type': session_memory_config.get('storage_type', 'memory'),
+                    'redis_config': session_memory_config.get('redis_config', {}),
+                    'ttl': session_memory_config.get('ttl', 3600),
+                    'max_messages': session_memory_config.get('max_messages', 100),
+                    'memory_key_prefix': session_memory_config.get('memory_key_prefix', 'session_memory')
+                }
+            }
+
+            # 根据存储类型创建记忆实例
+            storage_type = session_memory_config.get('storage_type', 'memory')
+
+            if storage_type == 'redis':
+                redis_config = session_memory_config.get('redis_config', {})
+                try:
+                    # 尝试创建AgentScope RedisMemory（如果可用）
+                    if 'RedisMemory' in globals() and RedisMemory is not None:
+                        memory = RedisMemory(
+                            redis_url=f"redis://{redis_config.get('host', 'localhost')}:{redis_config.get('port', 6379)}/{redis_config.get('db', 0)}",
+                            password=redis_config.get('password'),
+                            key_prefix=f"{session_memory_config.get('memory_key_prefix', 'session_memory')}:{user_id}:{session_id}"
+                        )
+                        self.logger.info(f"创建Redis记忆成功: {user_id}:{session_id}")
+                        return memory
+                    else:
+                        self.logger.warning("AgentScope RedisMemory不可用，降级到内存存储")
+                        # 初始化会话记忆服务
+                        session_memory_service.get_memory_backend(user_id, session_id, memory_config_dict)
+                        if 'InMemoryMemory' in locals():
+                            return InMemoryMemory()
+                        else:
+                            return None
+
+                except Exception as e:
+                    self.logger.warning(f"Redis记忆创建失败: {e}，降级到内存存储")
+                    # 初始化会话记忆服务（使用内存模式）
+                    memory_config_dict['session_memory']['storage_type'] = 'memory'
+                    session_memory_service.get_memory_backend(user_id, session_id, memory_config_dict)
+                    if 'InMemoryMemory' in locals():
+                        return InMemoryMemory()
+                    else:
+                        return None
+
+            else:
+                # 使用内存存储
+                self.logger.info(f"使用内存存储: {user_id}:{session_id}")
+                # 初始化会话记忆服务
+                session_memory_service.get_memory_backend(user_id, session_id, memory_config_dict)
+                if 'InMemoryMemory' in locals():
+                    return InMemoryMemory()
+                else:
+                    return None
+
+        except Exception as e:
+            self.logger.error(f"准备记忆配置失败: {e}")
+            # 返回None，让AgentScope使用默认记忆
             return None
 
 

@@ -108,6 +108,15 @@ class ConfigLoader:
         """
         return self.config_type
 
+    def get_full_config(self) -> Dict[str, Any]:
+        """
+        获取完整的配置字典
+
+        Returns:
+            完整的配置字典
+        """
+        return self.raw_config
+
     def get_agent_metadata(self) -> Dict[str, Any]:
         """
         获取智能体元数据
@@ -311,6 +320,66 @@ class ConfigLoader:
                 return agents[agent_index].get("monitoring_config", {})
             # 团队级别的监控配置
             return self.raw_config.get("logging_config", {})
+        return {}
+
+    def get_mcp_config(self, agent_index: int = 0) -> Dict[str, Any]:
+        """
+        获取MCP配置
+
+        Args:
+            agent_index: 智能体索引（用于多智能体配置）
+
+        Returns:
+            MCP配置字典
+        """
+        if self.config_type == "single":
+            return self.raw_config.get("mcp_config", {})
+        elif self.config_type == "team":
+            agents = self.raw_config.get("agents", [])
+            if agent_index < len(agents):
+                return agents[agent_index].get("mcp_config", {})
+            # 团队级别的MCP配置
+            return self.raw_config.get("global_mcp_config", {})
+        return {}
+
+    def get_built_in_tools_config(self, agent_index: int = 0) -> Dict[str, Any]:
+        """
+        获取内置工具配置
+
+        Args:
+            agent_index: 智能体索引（用于多智能体配置）
+
+        Returns:
+            内置工具配置字典
+        """
+        if self.config_type == "single":
+            return self.raw_config.get("built_in_tools_config", {})
+        elif self.config_type == "team":
+            agents = self.raw_config.get("agents", [])
+            if agent_index < len(agents):
+                return agents[agent_index].get("built_in_tools_config", {})
+            # 团队级别的内置工具配置
+            return self.raw_config.get("global_built_in_tools_config", {})
+        return {}
+
+    def get_context_compression_config(self, agent_index: int = 0) -> Dict[str, Any]:
+        """
+        获取上下文压缩配置
+
+        Args:
+            agent_index: 智能体索引（用于多智能体配置）
+
+        Returns:
+            上下文压缩配置字典
+        """
+        if self.config_type == "single":
+            return self.raw_config.get("context_compression_config", {})
+        elif self.config_type == "team":
+            agents = self.raw_config.get("agents", [])
+            if agent_index < len(agents):
+                return agents[agent_index].get("context_compression_config", {})
+            # 团队级别的上下文压缩配置
+            return self.raw_config.get("global_context_compression_config", {})
         return {}
 
     def get_warnings(self) -> List[str]:

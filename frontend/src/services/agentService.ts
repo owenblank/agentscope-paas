@@ -103,4 +103,65 @@ export const agentService = {
     )
     return response.data.data
   },
+
+  // 测试MCP服务器连接
+  async testMCPConnection(serverConfig: any) {
+    const response = await api.post<ApiResponse<any>>('/mcp/test-connection', {
+      server_config: serverConfig
+    })
+    return response.data.data
+  },
+
+  // 获取内置工具注册表
+  async getBuiltinToolsRegistry() {
+    const response = await api.get<ApiResponse<any>>('/tools/builtin/registry')
+    return response.data.data
+  },
+
+  // 配置内置工具
+  async configureBuiltinTool(toolConfig: any) {
+    const response = await api.post<ApiResponse<any>>('/tools/builtin/configure', {
+      tool_config: toolConfig
+    })
+    return response.data.data
+  },
+
+  // 获取工具类别
+  async getToolCategories() {
+    const response = await api.get<ApiResponse<any>>('/tools/categories')
+    return response.data.data
+  },
+
+  // 执行工具
+  async executeTool(toolId: string, args: any, context?: any) {
+    const response = await api.post<ApiResponse<any>>(`/tools/${toolId}/execute`, {
+      arguments: args,
+      context
+    })
+    return response.data.data
+  },
+
+  // 分析上下文压缩
+  async analyzeContextCompression(context: any[], compressionConfig: any) {
+    const response = await api.post<ApiResponse<any>>('/compression/analyze', {
+      context,
+      compression_config: compressionConfig
+    })
+    return response.data.data
+  },
+
+  // 预览压缩结果
+  async previewCompression(context: any[], compressionConfig: any) {
+    const response = await api.post<ApiResponse<any>>('/compression/preview', {
+      context,
+      compression_config: compressionConfig
+    })
+    return response.data.data
+  },
+
+  // 获取压缩策略
+  async getCompressionStrategies() {
+    const response = await api.get<ApiResponse<any>>('/compression/strategies')
+    return response.data.data
+  },
 }

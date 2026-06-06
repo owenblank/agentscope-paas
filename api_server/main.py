@@ -7,6 +7,15 @@ import sys
 import os
 from pathlib import Path
 
+# 设置控制台编码以支持emoji字符
+if sys.platform == 'win32':
+    try:
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except:
+        pass
+
 # 添加框架路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -14,7 +23,7 @@ from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Literal
 import uvicorn
 import json
 from datetime import datetime
@@ -25,9 +34,12 @@ import asyncio
 # from agentscope_paas.core.engine import Engine
 # from agentscope_paas.utils.logger import get_logger
 # from agentscope_paas.core.async_chat_processor import chat_processor
-from agentscope_paas.auth.middleware import set_storage
+from agentscope_paas.auth.middleware import set_storage, get_storage, api_key_auth
 from agentscope_paas.storage.memory import MemoryStorage
 from api_server.routers import auth_router
+from api_server.routers.conversation import router as conversation_router
+from api_server.routers import runtime as runtime_router
+from agentscope_paas.storage.models import User
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -59,6 +71,51 @@ templates_store = {}
 # 认证存储初始化
 auth_storage = MemoryStorage()
 set_storage(auth_storage)
+
+# ============================================
+# Runtime管理初始化
+# ============================================
+
+# Runtime状态跟踪
+runtime_managers: Dict[str, Any] = {}
+
+# ============================================
+# 启动和关闭事件处理
+# ============================================
+
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时的初始化"""
+    print("🚀 AgentScope PaaS API 启动中...")
+    print("📋 Runtime集成已加载")
+
+    # 检查Runtime可用性
+    try:
+        from agentscope_paas.utils.runtime_validator import check_runtime_availability
+        runtime_available = check_runtime_availability()
+        if runtime_available:
+            print("✅ AgentScope Runtime 可用")
+        else:
+            print("⚠️  AgentScope Runtime 不可用 - 安装: pip install agentscope-runtime")
+    except Exception as e:
+        print(f"⚠️  Runtime检查失败: {str(e)}")
+
+    print("✅ AgentScope PaaS API 启动完成")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时的清理"""
+    print("🛑 AgentScope PaaS API 关闭中...")
+
+    # 清理所有Runtime管理器
+    try:
+        from agentscope_paas.core.runtime_manager import cleanup_all_runtime_managers
+        cleanup_all_runtime_managers()
+        print("✅ Runtime管理器已清理")
+    except Exception as e:
+        print(f"⚠️  Runtime清理失败: {str(e)}")
+
+    print("✅ AgentScope PaaS API 关闭完成")
 
 # ============================================
 # 数据模型定义
@@ -93,6 +150,11 @@ class AgentConfig(BaseModel):
     skills_config: Optional[Dict[str, Any]] = None
     behavior_config: Optional[Dict[str, Any]] = None
     monitoring_config: Optional[Dict[str, Any]] = None
+    # New configuration extensions
+    mcp_config: Optional["MCPConfig"] = None
+    built_in_tools_config: Optional["BuiltInToolsConfig"] = None
+    context_compression_config: Optional["ContextCompressionConfig"] = None
+    session_memory_config: Optional["SessionMemoryConfig"] = None
 
 class CreateAgentRequest(BaseModel):
     config: AgentConfig
@@ -122,6 +184,127 @@ class SendMessageRequest(BaseModel):
     content: str
     message_type: str = "text"
     metadata: Optional[Dict[str, Any]] = None
+
+# ============================================
+# New Configuration Extension Models
+# ============================================
+
+class MCPConnectionConfig(BaseModel):
+    connection_type: Literal['stdio', 'sse', 'http']
+    command: Optional[str] = None
+    args: Optional[List[str]] = None
+    url: Optional[str] = None
+    headers: Optional[Dict[str, str]] = None
+    timeout: Optional[int] = 30
+    env_vars: Optional[Dict[str, str]] = None
+
+class MCPServerConfig(BaseModel):
+    server_id: str
+    server_name: str
+    description: str
+    connection: MCPConnectionConfig
+    tools: List[str] = []
+    resources: Optional[Dict[str, Any]] = None
+    permissions: Optional[Dict[str, Any]] = None
+    health_check: Optional[Dict[str, Any]] = None
+
+class MCPConfig(BaseModel):
+    enabled: bool = False
+    servers: List[MCPServerConfig] = []
+    global_settings: Optional[Dict[str, Any]] = None
+
+class BuiltInToolParameter(BaseModel):
+    name: str
+    type: Literal['string', 'number', 'boolean', 'object', 'array']
+    required: bool
+    default: Optional[Any] = None
+    description: str
+    validation: Optional[Dict[str, Any]] = None
+
+class BuiltInTool(BaseModel):
+    tool_id: str
+    tool_name: str
+    category: Literal['data_analysis', 'text_processing', 'api_tools', 'file_operations', 'communication', 'web_tools']
+    description: str
+    version: str = "1.0.0"
+    parameters: List[BuiltInToolParameter] = []
+    execution_config: Optional[Dict[str, Any]] = None
+    permissions: Optional[Dict[str, Any]] = None
+    dependencies: Optional[List[str]] = None
+
+class ToolCategory(BaseModel):
+    category_id: str
+    category_name: str
+    description: str
+    tools: List[str] = []
+    icon: Optional[str] = None
+    enabled_by_default: bool = True
+
+class BuiltInToolsConfig(BaseModel):
+    enabled: bool = False
+    available_tools: List[BuiltInTool] = []
+    categories: List[ToolCategory] = []
+    global_restrictions: Optional[Dict[str, Any]] = None
+
+class SemanticCompressionConfig(BaseModel):
+    enabled: bool = True
+    similarity_threshold: float = 0.75
+    preserve_entities: bool = True
+    preserve_keywords: List[str] = []
+    min_summary_length: int = 100
+    max_summary_length: int = 500
+
+class TokenBasedCompressionConfig(BaseModel):
+    enabled: bool = False
+    max_tokens: int = 2000
+    preserve_structure: bool = True
+    priority_sections: List[str] = []
+    compression_ratio: float = 0.5
+
+class HybridCompressionConfig(BaseModel):
+    enabled: bool = True
+    semantic_weight: float = 0.6
+    token_weight: float = 0.4
+    min_context_length: int = 1000
+    adaptive_threshold: float = 0.8
+
+class PriorityRule(BaseModel):
+    rule_id: str
+    rule_name: str
+    priority: int
+    conditions: Dict[str, Any]
+    action: Literal['preserve', 'compress', 'remove']
+
+class ContextCompressionConfig(BaseModel):
+    enabled: bool = False
+    strategies: Dict[str, Any] = {}
+    active_strategy: Literal['semantic', 'token_based', 'hybrid'] = 'hybrid'
+    trigger_conditions: Dict[str, Any] = {}
+    priority_config: Optional[Dict[str, Any]] = None
+    quality_controls: Optional[Dict[str, Any]] = None
+
+# ============================================
+# Session Memory Configuration Models
+# ============================================
+
+class RedisConnectionConfig(BaseModel):
+    """Redis连接配置"""
+    host: str = "localhost"
+    port: int = 6379
+    db: int = 0
+    password: Optional[str] = None
+    connection_pool_size: int = 10
+    socket_timeout: int = 5
+    socket_connect_timeout: int = 5
+
+class SessionMemoryConfig(BaseModel):
+    """会话记忆配置"""
+    enabled: bool = False
+    storage_type: Literal['redis', 'memory', 'file'] = 'redis'
+    redis_config: Optional[RedisConnectionConfig] = None
+    ttl: int = 3600  # 会话记忆过期时间（秒）
+    max_messages: int = 100  # 最大保存消息数
+    memory_key_prefix: str = "session_memory"
 
 # ============================================
 # 辅助函数
@@ -225,6 +408,10 @@ load_templates()
 
 # 包含认证路由
 app.include_router(auth_router)
+# 包含对话管理路由
+app.include_router(conversation_router)
+# 包含Runtime管理路由
+app.include_router(runtime_router.router)
 
 # ============================================
 # 根路径处理
@@ -382,8 +569,12 @@ async def create_from_template(template_id: str, customizations: Dict[str, Any])
 # ============================================
 
 @app.get("/api/v1/agents")
-async def get_agents(page: int = 1, limit: int = 20):
-    """获取智能体列表"""
+async def get_agents(
+    page: int = 1,
+    limit: int = 20,
+    current_user: User = Depends(api_key_auth)
+):
+    """获取智能体列表（需要认证）"""
     agents = list(agents_store.values())
 
     # 分页
@@ -418,8 +609,11 @@ async def get_agents(page: int = 1, limit: int = 20):
     }
 
 @app.get("/api/v1/agents/{agent_id}")
-async def get_agent(agent_id: str):
-    """获取智能体详情"""
+async def get_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """获取智能体详情（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -436,8 +630,11 @@ async def get_agent(agent_id: str):
     }
 
 @app.post("/api/v1/agents")
-async def create_agent(request: CreateAgentRequest):
-    """创建智能体"""
+async def create_agent(
+    request: CreateAgentRequest,
+    current_user: User = Depends(api_key_auth)
+):
+    """创建智能体（需要认证）"""
     agent_id = request.config.agent_metadata.agent_id
 
     # 检查是否已存在
@@ -468,8 +665,12 @@ async def create_agent(request: CreateAgentRequest):
     }
 
 @app.put("/api/v1/agents/{agent_id}")
-async def update_agent(agent_id: str, request: Dict[str, Any]):
-    """更新智能体"""
+async def update_agent(
+    agent_id: str,
+    request: Dict[str, Any],
+    current_user: User = Depends(api_key_auth)
+):
+    """更新智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -493,8 +694,11 @@ async def update_agent(agent_id: str, request: Dict[str, Any]):
     }
 
 @app.delete("/api/v1/agents/{agent_id}")
-async def delete_agent(agent_id: str):
-    """删除智能体"""
+async def delete_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """删除智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -512,8 +716,11 @@ async def delete_agent(agent_id: str):
     }
 
 @app.post("/api/v1/agents/{agent_id}/start")
-async def start_agent(agent_id: str):
-    """启动智能体"""
+async def start_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """启动智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -541,8 +748,11 @@ async def start_agent(agent_id: str):
         }
 
 @app.post("/api/v1/agents/{agent_id}/stop")
-async def stop_agent(agent_id: str):
-    """停止智能体"""
+async def stop_agent(
+    agent_id: str,
+    current_user: User = Depends(api_key_auth)
+):
+    """停止智能体（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 
@@ -756,12 +966,379 @@ async def test_connection(request: ConnectionTestRequest):
         }
 
 # ============================================
+# MCP Configuration Endpoints
+# ============================================
+
+@app.post("/api/v1/mcp/test-connection")
+async def test_mcp_connection(request: Dict[str, Any]):
+    """测试MCP服务器连接"""
+    try:
+        from agentscope_paas.mcp.client import mcp_client
+
+        server_config = request.get("server_config", {})
+        if not server_config:
+            raise HTTPException(status_code=400, detail="缺少 server_config")
+
+        # Use synchronous wrapper to avoid event loop conflicts
+        result = mcp_client.test_connection_sync(server_config)
+
+        return {
+            "success": result["status"] == "success",
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "data": {
+                "status": "failed",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+
+@app.get("/api/v1/mcp/servers")
+async def list_mcp_servers():
+    """获取可用的MCP服务器列表"""
+    try:
+        from agentscope_paas.mcp.client import mcp_client
+
+        connections = mcp_client.get_all_connections()
+
+        return {
+            "success": True,
+            "data": {
+                "servers": list(connections.values()),
+                "total": len(connections)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取MCP服务器列表失败: {str(e)}"
+        }
+
+@app.post("/api/v1/mcp/servers")
+async def add_mcp_server(request: Dict[str, Any]):
+    """添加新的MCP服务器配置"""
+    try:
+        from agentscope_paas.mcp.client import mcp_client
+
+        server_config = request.get("server_config", {})
+        if not server_config:
+            raise HTTPException(status_code=400, detail="缺少 server_config")
+
+        # Test connection first
+        test_result = await mcp_client.test_connection(server_config)
+        if test_result["status"] != "success":
+            return {
+                "success": False,
+                "message": f"MCP服务器连接测试失败: {test_result.get('error')}"
+            }
+
+        # Establish connection
+        connection_id = mcp_client.connect_to_server_sync(server_config)
+
+        return {
+            "success": True,
+            "data": {
+                "connection_id": connection_id,
+                "server_id": server_config.get("server_id"),
+                "test_result": test_result
+            },
+            "message": "MCP服务器添加成功"
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"添加MCP服务器失败: {str(e)}"
+        }
+
+# ============================================
+# Built-in Tools Endpoints
+# ============================================
+
+@app.get("/api/v1/tools/builtin/registry")
+async def get_builtin_tools_registry():
+    """获取内置工具注册表"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        all_tools = tool_registry.get_all_tools()
+        categories = tool_registry.get_categories()
+
+        return {
+            "success": True,
+            "data": {
+                "tools": all_tools,
+                "categories": categories,
+                "total_tools": len(all_tools)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取工具注册表失败: {str(e)}"
+        }
+
+@app.post("/api/v1/tools/builtin/configure")
+async def configure_builtin_tool(request: Dict[str, Any]):
+    """配置内置工具"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        tool_config = request.get("tool_config", {})
+        if not tool_config:
+            raise HTTPException(status_code=400, detail="缺少 tool_config")
+
+        # Register or update tool
+        success = tool_registry.register_built_in_tool(tool_config)
+
+        if success:
+            return {
+                "success": True,
+                "data": {
+                    "tool_id": tool_config.get("tool_id"),
+                    "tool_name": tool_config.get("tool_name")
+                },
+                "message": "工具配置成功"
+            }
+        else:
+            return {
+                "success": False,
+                "message": "工具配置失败"
+            }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"配置工具失败: {str(e)}"
+        }
+
+@app.get("/api/v1/tools/categories")
+async def get_tool_categories():
+    """获取工具类别列表"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        categories = tool_registry.get_categories()
+
+        return {
+            "success": True,
+            "data": {
+                "categories": list(categories.values()),
+                "total": len(categories)
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取工具类别失败: {str(e)}"
+        }
+
+@app.post("/api/v1/tools/{tool_id}/execute")
+async def execute_tool(tool_id: str, request: Dict[str, Any]):
+    """执行工具"""
+    try:
+        from agentscope_paas.tools.registry import tool_registry
+
+        arguments = request.get("arguments", {})
+        context = request.get("context", {})
+
+        # Execute tool (use synchronous wrapper to avoid event loop conflicts)
+        result = tool_registry.execute_tool_sync(tool_id, arguments, context)
+
+        return {
+            "success": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"工具执行失败: {str(e)}"
+        }
+
+# ============================================
+# Session Memory Endpoints
+# ============================================
+
+@app.post("/api/v1/test-redis")
+async def test_redis_connection(request: Dict[str, Any]):
+    """测试Redis连接"""
+    try:
+        from agentscope_paas.storage.redis_storage import RedisStorageBackend, RedisConfig
+
+        redis_config_data = request.get("redis_config", {})
+        if not redis_config_data:
+            raise HTTPException(status_code=400, detail="缺少 redis_config 参数")
+
+        # 创建Redis配置
+        redis_config = RedisConfig(
+            host=redis_config_data.get("host", "localhost"),
+            port=redis_config_data.get("port", 6379),
+            db=redis_config_data.get("db", 0),
+            password=redis_config_data.get("password"),
+            connection_pool_size=redis_config_data.get("connection_pool_size", 10),
+            socket_timeout=redis_config_data.get("socket_timeout", 5),
+            socket_connect_timeout=redis_config_data.get("socket_connect_timeout", 5)
+        )
+
+        # 测试连接
+        backend = RedisStorageBackend(redis_config)
+        health_info = backend.health_check()
+
+        if health_info["status"] == "healthy":
+            return {
+                "success": True,
+                "data": health_info,
+                "message": "Redis连接成功"
+            }
+        else:
+            return {
+                "success": False,
+                "data": health_info,
+                "message": f"Redis连接失败: {health_info.get('message', '未知错误')}"
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Redis连接测试失败: {str(e)}"
+        }
+
+# ============================================
+# Context Compression Endpoints
+# ============================================
+
+@app.post("/api/v1/compression/analyze")
+async def analyze_context_compression(request: Dict[str, Any]):
+    """分析上下文并提供压缩建议"""
+    try:
+        from agentscope_paas.compression.engine import compression_engine
+
+        context = request.get("context", [])
+        compression_config = request.get("compression_config", {})
+
+        if not context:
+            raise HTTPException(status_code=400, detail="缺少 context 参数")
+
+        # Use synchronous wrapper to avoid event loop conflicts
+        analysis = compression_engine.analyze_context_sync(context, compression_config)
+
+        return {
+            "success": True,
+            "data": analysis
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"上下文分析失败: {str(e)}"
+        }
+
+@app.post("/api/v1/compression/preview")
+async def preview_compression(request: Dict[str, Any]):
+    """预览压缩结果"""
+    try:
+        from agentscope_paas.compression.engine import compression_engine
+
+        context = request.get("context", [])
+        compression_config = request.get("compression_config", {})
+
+        if not context:
+            raise HTTPException(status_code=400, detail="缺少 context 参数")
+
+        # Use synchronous wrapper to avoid event loop conflicts
+        result = compression_engine.compress_context_sync(context, compression_config)
+
+        return {
+            "success": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"压缩预览失败: {str(e)}"
+        }
+
+@app.get("/api/v1/compression/strategies")
+async def get_compression_strategies():
+    """获取可用的压缩策略"""
+    try:
+        from agentscope_paas.compression.engine import CompressionStrategy
+
+        strategies = [
+            {
+                "strategy_id": CompressionStrategy.SEMANTIC.value,
+                "name": "Semantic Compression",
+                "description": "基于语义相似度的智能压缩，保留重要信息的同时合并相似内容",
+                "advantages": [
+                    "保持语义完整性",
+                    "智能合并相似消息",
+                    "保留关键实体和关键词"
+                ],
+                "best_for": "需要保持对话语义和上下文连贯性的场景",
+                "compression_ratio": "30-50%"
+            },
+            {
+                "strategy_id": CompressionStrategy.TOKEN_BASED.value,
+                "name": "Token-Based Compression",
+                "description": "基于Token计数的压缩，确保上下文长度在指定限制内",
+                "advantages": [
+                    "精确控制上下文长度",
+                    "保持消息结构",
+                    "优先级排序"
+                ],
+                "best_for": "有严格Token限制的场景",
+                "compression_ratio": "40-60%"
+            },
+            {
+                "strategy_id": CompressionStrategy.HYBRID.value,
+                "name": "Hybrid Compression",
+                "description": "结合语义和Token优势的混合压缩策略",
+                "advantages": [
+                    "平衡压缩质量和长度控制",
+                    "自适应调整",
+                    "最佳综合效果"
+                ],
+                "best_for": "需要平衡压缩质量和长度控制的一般场景",
+                "compression_ratio": "35-55%"
+            }
+        ]
+
+        return {
+            "success": True,
+            "data": {
+                "strategies": strategies,
+                "default_strategy": CompressionStrategy.HYBRID.value
+            }
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取压缩策略失败: {str(e)}"
+        }
+
+# ============================================
 # 对话管理端点
 # ============================================
 
 @app.post("/api/v1/agents/{agent_id}/conversations")
-async def create_conversation(agent_id: str, request: CreateConversationRequest):
-    """创建对话会话"""
+async def create_conversation(
+    agent_id: str,
+    request: CreateConversationRequest,
+    current_user: User = Depends(api_key_auth)
+):
+    """创建对话会话（需要认证）"""
     if agent_id not in agents_store:
         raise HTTPException(status_code=404, detail="智能体不存在")
 

@@ -56,6 +56,7 @@ class UserResponse(BaseModel):
     role: str
     created_at: datetime
     is_active: bool
+    updated_at: Optional[datetime] = None  # Optional field
 
 
 class AuthResponse(BaseModel):
@@ -219,7 +220,8 @@ async def login(
         "success": True,
         "data": {
             "user": UserResponse.model_validate(user.model_dump()),
-            "api_key": api_key_plain,
+            "access_token": api_key_plain,  # Changed from api_key to access_token for JWT compatibility
+            "token_type": "Bearer",
             "message": "登录成功"
         }
     }

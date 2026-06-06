@@ -25,13 +25,29 @@ export const Login: React.FC = () => {
 
   const onFinish = async (values: LoginFormData) => {
     try {
+      console.log('Login form submitted with:', values.email)
       await login(values.email, values.password)
-      message.success('登录成功')
-      setTimeout(() => {
-        navigate(from, { replace: true })
-      }, 100)
+
+      // Check if login was successful
+      const authState = useAuthStore.getState()
+      console.log('Auth state after login:', {
+        isAuthenticated: authState.isAuthenticated,
+        hasUser: !!authState.user,
+        hasApiKey: !!authState.apiKey
+      })
+
+      if (authState.isAuthenticated) {
+        message.success('登录成功')
+        // Give state time to update before navigation
+        setTimeout(() => {
+          console.log('Navigating to:', from)
+          navigate(from, { replace: true })
+        }, 300)
+      } else {
+        message.error('登录状态未更新，请重试')
+      }
     } catch (error) {
-      // Error is handled by the store
+      console.error('Login form error:', error)
       message.error('登录失败，请检查邮箱和密码')
     }
   }

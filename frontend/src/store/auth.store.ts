@@ -35,20 +35,43 @@ export const useAuthStore = create<AuthState>()(
 
       // Login action
       login: async (email: string, password: string) => {
+        console.log('Starting login process for:', email)
         set({ isLoading: true, error: null })
         try {
+          console.log('Calling authService.login with:', { email })
           const response = await authService.login({ email, password })
+          console.log('Login response received:', response)
+
+          // Handle different response formats
+          const token = response.access_token || response.api_key || response.token
+          const user = response.user || response.data?.user
+
+          console.log('Extracted token:', !!token, 'Extracted user:', !!user)
+
+          if (!token) {
+            console.error('No token in response:', response)
+            throw new Error('No token received from server')
+          }
+
           set({
-            user: response.user,
-            apiKey: response.api_key,
+            user: user || response,
+            apiKey: token,
             isAuthenticated: true,
             isLoading: false,
           })
+
+          console.log('Login successful, auth state updated:', {
+            isAuthenticated: true,
+            hasUser: !!user,
+            hasApiKey: !!token
+          })
         } catch (error: any) {
-          const errorMessage = error.response?.data?.detail || '登录失败'
+          console.error('Login error:', error)
+          const errorMessage = error.response?.data?.detail || error.message || '登录失败'
           set({
             error: errorMessage,
             isLoading: false,
+            isAuthenticated: false,
           })
           throw error
         }
@@ -56,21 +79,32 @@ export const useAuthStore = create<AuthState>()(
 
       // Register action
       register: async (username: string, email: string, password: string) => {
+        console.log('Starting registration process for:', username)
         set({ isLoading: true, error: null })
         try {
+          console.log('Calling authService.register with:', { username, email })
           const response = await authService.register({
             username,
             email,
             password,
           })
+          console.log('Registration response:', response)
+
+          const token = response.api_key || response.access_token
+          if (!token) {
+            throw new Error('No API key received from server')
+          }
+
           set({
             user: response.user,
-            apiKey: response.api_key,
+            apiKey: token,
             isAuthenticated: true,
             isLoading: false,
           })
+          console.log('Registration successful, auth state updated')
         } catch (error: any) {
-          const errorMessage = error.response?.data?.detail || '注册失败'
+          console.error('Registration error:', error)
+          const errorMessage = error.response?.data?.detail || error.message || '注册失败'
           set({
             error: errorMessage,
             isLoading: false,

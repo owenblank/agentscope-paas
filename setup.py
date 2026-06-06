@@ -100,8 +100,7 @@ setup(
     # 命令行入口
     entry_points={
         "console_scripts": [
-            "agentscope-paas=agentscope_paas.cli:main",
-            "agentscope-paas-info=agentscope_paas.cli:show_info",
+            "agentscope-paas=agentscope_paas.cli:console_script_main",
         ],
     },
 

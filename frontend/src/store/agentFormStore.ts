@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { AgentConfig, ValidationResult, CostEstimate } from '@/types'
+import type { AgentConfig, ValidationResult, CostEstimate, MCPConfig, BuiltInToolsConfig, ContextCompressionConfig, SessionMemoryConfig, RuntimeConfig } from '@/types'
+import { getDefaultRuntimeConfig } from '@/components/Agent/RuntimeConfigForm'
 
 interface AgentFormState {
   // 当前步骤
@@ -89,6 +90,97 @@ const initialFormData: Partial<AgentConfig> = {
     enable_performance_tracking: true,
     save_conversation_history: true,
   },
+  // New configuration extensions
+  mcp_config: {
+    enabled: false,
+    servers: [],
+    global_settings: {
+      connection_timeout: 30,
+      max_concurrent_connections: 5,
+      enable_tool_logging: true,
+      retry_config: {
+        max_retries: 3,
+        backoff_multiplier: 2.0,
+        initial_delay_ms: 1000
+      }
+    }
+  },
+  built_in_tools_config: {
+    enabled: false,
+    available_tools: [],
+    categories: [],
+    global_restrictions: {
+      allowed_categories: [],
+      max_total_calls_per_conversation: 50,
+      execution_timeout: 60,
+      require_user_approval: false
+    }
+  },
+  context_compression_config: {
+    enabled: false,
+    strategies: {
+      semantic: {
+        enabled: true,
+        similarity_threshold: 0.75,
+        preserve_entities: true,
+        preserve_keywords: [],
+        min_summary_length: 100,
+        max_summary_length: 500
+      },
+      token_based: {
+        enabled: false,
+        max_tokens: 2000,
+        preserve_structure: true,
+        priority_sections: [],
+        compression_ratio: 0.5
+      },
+      hybrid: {
+        enabled: true,
+        semantic_weight: 0.6,
+        token_weight: 0.4,
+        min_context_length: 1000,
+        adaptive_threshold: 0.8
+      }
+    },
+    active_strategy: 'hybrid',
+    trigger_conditions: {
+      max_context_length: 4000,
+      token_threshold: 3000,
+      trigger_on_each_turn: false
+    },
+    priority_config: {
+      enabled: false,
+      priority_rules: [],
+      preservation_threshold: 0.8
+    },
+    quality_controls: {
+      min_coherence_score: 0.8,
+      max_information_loss: 0.2,
+      enable_validation: true,
+      compression_targets: {
+        min_compression_ratio: 0.3,
+        max_compression_ratio: 0.6
+      }
+    }
+  },
+  session_memory_config: {
+    enabled: false,
+    storage_type: 'redis',
+    redis_config: {
+      host: 'localhost',
+      port: 6379,
+      db: 0,
+      password: '',
+      connection_pool_size: 10,
+      socket_timeout: 5,
+      socket_connect_timeout: 5,
+    },
+    ttl: 3600,
+    max_messages: 100,
+    memory_key_prefix: 'session_memory',
+  },
+  // Runtime configuration for agent deployment
+  runtime_config: getDefaultRuntimeConfig()
 }
 
 export const useAgentFormStore = create<AgentFormState>()(

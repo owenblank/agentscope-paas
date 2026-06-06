@@ -67,30 +67,50 @@ npm run dev
 - **API文档**：http://localhost:8000/docs
 - **注册账号**：首次使用请注册新账号
 
-### 方式二：命令行接口
+### 方式二：命令行接口 ⭐ NEW
 
 #### 1. 安装依赖
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 #### 2. 使用配置文件
 在 `examples/` 目录下选择配置模板：
 ```bash
 # 单智能体配置
-cp examples/customer_service_agent.yaml my_agent.yaml
+cp examples/simple_chatbot.yaml my_agent.yaml
 
-# 多智能体团队配置
-cp examples/software_dev_team.yaml my_team.yaml
+# 会话记忆配置
+cp examples/agent_with_session_memory.yaml my_agent.yaml
+
+# 上下文压缩配置
+cp examples/agent_with_compression.yaml my_agent.yaml
 ```
 
 #### 3. 运行智能体
+
+**运行单个配置**：
 ```bash
 # 交互模式
-python main.py --config my_agent.yaml
+agentscope-paas run examples/simple_chatbot.yaml
 
-# 单次对话
-python main.py --config my_agent.yaml --input "你好"
+# 验证配置
+agentscope-paas validate examples/simple_chatbot.yaml
+
+# 查看系统信息
+agentscope-paas info
+```
+
+**批量运行配置**：
+```bash
+# 批量运行目录中的所有配置
+agentscope-paas batch examples/ --pattern "*.yaml"
+```
+
+**后台服务模式**：
+```bash
+# 启动后台服务（开发中）
+agentscope-paas serve examples/ --port 8888
 ```
 
 ---
@@ -100,61 +120,166 @@ python main.py --config my_agent.yaml --input "你好"
 ```
 agentscope-paas/
 ├── agentscope_paas/           # 框架核心包
-│   ├── __init__.py            # 包初始化
 │   ├── auth/                  # 认证模块
 │   │   ├── middleware.py      # JWT认证中间件
 │   │   └── security.py        # 安全工具函数
+│   ├── cli/                   # 命令行工具 ⭐ NEW
+│   │   ├── main.py            # CLI主入口
+│   │   ├── config_processor.py # 配置处理
+│   │   ├── launcher.py        # 智能体启动器
+│   │   ├── error_handler.py   # 错误处理
+│   │   └── interactive.py     # 交互式会话
+│   ├── compression/           # 上下文压缩 ⭐ NEW
+│   │   └── engine.py          # 压缩引擎
 │   ├── config/                # 配置模块
-│   │   ├── loader.py          # YAML配置加载、校验、解析
-│   │   └── validator.py       # 配置字段校验
-│   ├── factory/               # 智能体工厂
-│   │   ├── agent_factory.py   # 单智能体自动创建
-│   │   └── team_factory.py    # 多智能体团队创建
+│   │   ├── loader.py          # YAML配置加载
+│   │   ├── validator.py       # 配置验证
+│   │   └── runtime_mapper.py  # 运行时映射
 │   ├── core/                  # 核心引擎
-│   │   ├── engine.py          # 智能体运行引擎
-│   │   └── async_chat_processor.py  # 异步对话处理器
+│   │   ├── engine.py          # 智能体引擎
+│   │   ├── runtime_manager.py # 运行时管理
+│   │   └── async_chat_processor.py # 异步处理
+│   ├── deployment/            # 部署工具 ⭐ NEW
+│   │   └── production_utils.py # 生产环境工具
+│   ├── factory/               # 智能体工厂
+│   │   ├── agent_factory.py   # 单智能体工厂
+│   │   ├── team_factory.py    # 多智能体工厂
+│   │   └── runtime_agent_factory.py # 运行时工厂 ⭐ NEW
+│   ├── lifecycle/             # 生命周期管理 ⭐ NEW
+│   │   └── advanced_lifecycle.py # 高级生命周期
+│   ├── memory/                # 记忆管理 ⭐ NEW
+│   │   └── session_memory_service.py # 会话记忆
+│   ├── monitoring/            # 监控系统 ⭐ NEW
+│   │   └── runtime_monitor.py # 运行时监控
+│   ├── mcp/                   # MCP协议支持 ⭐ NEW
+│   │   └── client.py          # MCP客户端
+│   ├── performance/           # 性能优化 ⭐ NEW
+│   │   └── runtime_optimizer.py # 运行时优化
 │   ├── storage/               # 存储模块
 │   │   ├── models.py          # 数据模型
 │   │   ├── memory.py          # 内存存储
-│   │   └── base.py            # 基础存储接口
+│   │   ├── redis_storage.py   # Redis存储
+│   │   └── base.py            # 存储接口
+│   ├── tools/                 # 工具注册 ⭐ NEW
+│   │   └── registry.py        # 工具注册表
 │   └── utils/                 # 工具类
-│       ├── logger.py          # 日志工具
-│       └── exceptions.py      # 自定义异常
+│       ├── logger.py          # 统一日志
+│       ├── exceptions.py      # 异常定义
+│       └── runtime_validator.py # 运行时验证 ⭐ NEW
 ├── api_server/                # API服务器
 │   ├── main.py                # FastAPI主应用
 │   ├── routers/               # API路由
-│   │   ├── auth.py            # 认证相关API
-│   │   ├── agents.py          # 智能体管理API
-│   │   ├── chat.py            # 对话API
+│   │   ├── auth.py            # 认证API
+│   │   ├── conversation.py   # 对话API ⭐ NEW
+│   │   ├── runtime.py         # 运行时API ⭐ NEW
 │   │   └── monitoring.py      # 监控API
-│   ├── data/                  # 数据存储目录
+│   ├── utils/                 # API工具
+│   │   └── streaming.py       # 流式处理
+│   ├── data/                  # 数据存储
 │   └── logs/                  # 日志目录
 ├── frontend/                  # React前端应用
 │   ├── src/                   # 源代码
 │   │   ├── components/        # React组件
+│   │   │   ├── Agent/         # 智能体组件
+│   │   │   │   ├── RuntimeChatInterface.tsx # 运行时对话 ⭐ NEW
+│   │   │   │   ├── SessionMemoryForm.tsx # 会话记忆 ⭐ NEW
+│   │   │   │   └── ContextCompressionForm.tsx # 上下文压缩 ⭐ NEW
+│   │   │   ├── Auth/          # 认证组件
+│   │   │   └── Layout/        # 布局组件
 │   │   ├── pages/             # 页面组件
+│   │   │   ├── Agent/         # 智能体页面
+│   │   │   │   └── AgentCreateSimple.tsx # 简化创建 ⭐ NEW
+│   │   │   ├── Auth/          # 认证页面
+│   │   │   └── Dashboard/     # 仪表板
 │   │   ├── services/          # API服务
-│   │   └── utils/             # 工具函数
+│   │   ├── store/             # 状态管理
+│   │   └── types/             # TypeScript类型
 │   ├── public/                # 静态资源
-│   ├── package.json           # npm配置
-│   └── vite.config.ts         # Vite配置
+│   └── package.json           # npm配置
 ├── examples/                  # 配置示例
-│   ├── customer_service_agent.yaml      # 客服智能体示例
-│   ├── simple_chatbot.yaml              # 简单聊天机器人
-│   └── software_dev_team.yaml           # 软件开发团队
+│   ├── simple_chatbot.yaml    # 简单聊天机器人
+│   ├── customer_service_agent.yaml # 客服智能体
+│   ├── agent_with_session_memory.yaml # 会话记忆示例 ⭐ NEW
+│   └── agent_with_compression.yaml # 上下文压缩示例 ⭐ NEW
 ├── tests/                     # 测试文件
-│   ├── test_auth_api.py       # 认证API测试
-│   ├── test_storage.py        # 存储测试
-│   └── test_security.py       # 安全测试
+│   ├── test_auth_api.py       # 认证测试
+│   ├── test_cli.py            # CLI测试 ⭐ NEW
+│   ├── test_runtime_api.py    # 运行时测试 ⭐ NEW
+│   ├── test_session_memory.py  # 会话记忆测试 ⭐ NEW
+│   └── test_*.py              # 其他测试
+├── e2e/                       # 端到端测试 (23个核心测试)
+│   ├── main_test_runner.py    # 主测试运行器
+│   ├── comprehensive_integration_test.py # 综合测试
+│   └── test_*.py              # 功能测试
 ├── docs/                      # 文档目录
+│   ├── superpowers/           # CLI设计文档 ⭐ NEW
 │   ├── system_architecture.md # 系统架构
-│   ├── api_design.md          # API设计文档
-│   └── database_design.md     # 数据库设计
+│   └── api_design.md          # API设计
+├── scripts/                   # 工具脚本
+│   ├── prepare_e2e_env.py     # 环境准备
+│   ├── start_services.py      # 服务启动
+│   └── verify_e2e_setup.py    # 环境验证
 ├── requirements.txt           # Python依赖
-├── requirements-dev.txt       # 开发依赖
 ├── setup.py                   # 安装脚本
+├── REFACTORING_SUMMARY.md     # 重构总结 ⭐ NEW
 └── README.md                  # 项目说明（本文件）
 ```
+
+---
+
+## 🧪 端到端测试
+
+AgentScope PaaS 提供完整的端到端测试方案，验证核心业务流程和系统功能。
+
+### 快速运行
+
+**Windows用户：**
+```bash
+run_e2e_complete.bat
+```
+
+**Linux/Mac用户：**
+```bash
+# 1. 环境准备
+python scripts/prepare_e2e_env.py
+
+# 2. 启动服务
+python scripts/start_services.py &
+
+# 3. 运行测试
+python e2e/simple_e2e_test.py
+```
+
+### 详细指南
+
+请参阅: [E2E测试使用指南](E2E_TESTING_GUIDE.md)
+
+### 测试覆盖
+
+- ✅ **首页加载和渲染**: 验证前端界面正常显示
+- ✅ **用户认证流程**: 测试登录/注册功能
+- ✅ **智能体创建管理**: 验证智能体配置和创建
+- ✅ **页面导航功能**: 检查主要导航链接
+- ✅ **服务启动验证**: 确保前后端服务正常
+
+### 测试结果
+
+- **通过率**: ≥ 75%
+- **响应时间**: < 3秒
+- **自动化程度**: 100%
+- **截图报告**: 自动生成测试截图和JSON报告
+
+### 测试输出
+
+- **截图**: `e2e_screenshots/` 目录
+- **报告**: `e2e_reports/` 目录
+- **日志**: 控制台实时输出
+
+### 环境要求
+
+- Python >= 3.8
+- Playwright (首次运行会自动安装)
+- 现代浏览器 (Chromium)
 
 ---
 
@@ -185,6 +310,9 @@ agentscope-paas/
 
 #### 仪表板
 ![Dashboard](docs/screenshots/05_dashboard.png)
+
+> **📸 截图说明**: 当前界面截图展示了AgentScope PaaS的主要功能界面。
+> 登录和注册界面提供用户认证功能，仪表板显示系统概览，智能体管理界面支持完整的智能体生命周期管理。
 
 ## 🎯 核心功能
 
@@ -234,10 +362,14 @@ model_config:
 - ✅ **用户认证**：JWT认证、密码加密、会话管理
 - ✅ **数据存储**：用户数据、智能体配置、对话历史持久化
 - ✅ **API安全**：CORS配置、请求验证、速率限制
-- ✅ **日志系统**：操作日志、错误日志、访问日志
+- ✅ **日志系统**：统一日志记录、彩色输出、文件记录 ⭐ NEW
 - ✅ **监控告警**：系统状态监控、异常告警
-- ✅ **记忆模块**：短期记忆、长期记忆、向量记忆
+- ✅ **会话记忆**：短期记忆、长期记忆、向量记忆 ⭐ NEW
 - ✅ **技能系统**：前端上传技能配置（对齐skill-creator规范）
+- ✅ **上下文压缩**：智能上下文管理，支持语义、Token和混合压缩策略 ⭐
+- ✅ **CLI工具**：完整的命令行工具，支持配置验证和批量运行 ⭐ NEW
+- ✅ **运行时管理**：智能体生命周期管理和性能监控 ⭐ NEW
+- ✅ **MCP协议**：支持Model Context Protocol外部工具集成 ⭐ NEW
 
 ---
 
@@ -268,6 +400,48 @@ model_config:
 - tool_config: 工具调用配置
 - behavior_config: 行为控制配置
 - monitoring_config: 监控配置
+- **context_compression_config**: 上下文压缩配置 ⭐ **NEW**
+  - 智能上下文压缩，支持语义、Token和混合策略
+  - 作为智能体配置的标准组成部分
+  - 详见 [AGENT_CONFIG_COMPRESSION_GUIDE.md](AGENT_CONFIG_COMPRESSION_GUIDE.md)
+
+#### 上下文压缩配置示例
+```yaml
+context_compression_config:
+  enabled: true
+  active_strategy: "hybrid"
+  strategies:
+    hybrid:
+      enabled: true
+      semantic_weight: 0.6
+      token_weight: 0.4
+      min_context_length: 1000
+      adaptive_threshold: 0.8
+    semantic:
+      enabled: true
+      similarity_threshold: 0.75
+      preserve_entities: true
+      preserve_keywords: ["重要", "关键"]
+      min_summary_length: 100
+      max_summary_length: 500
+    token_based:
+      enabled: false
+      max_tokens: 2000
+      preserve_structure: true
+      compression_ratio: 0.5
+  trigger_conditions:
+    max_context_length: 3000
+    token_threshold: 2000
+    trigger_on_each_turn: false
+  priority_config:
+    enabled: true
+    preservation_threshold: 0.8
+    priority_rules: []
+  quality_controls:
+    min_coherence_score: 0.8
+    max_information_loss: 0.2
+    enable_validation: true
+```
 
 ### 多智能体团队配置要点
 
@@ -340,7 +514,11 @@ skill-folder/
 - **格式要求**：必须符合 skill-creator 规范
 - **安全验证**：恶意代码扫描、结构验证
 
-**详细文档**：请参阅 [docs/SKILL_CONFIG_GUIDE.md](docs/SKILL_CONFIG_GUIDE.md)
+**详细文档**：
+- 上下文压缩：[AGENT_CONFIG_COMPRESSION_GUIDE.md](AGENT_CONFIG_COMPRESSION_GUIDE.md)
+- 会话记忆：[SESSION_MEMORY_IMPLEMENTATION_SUMMARY.md](SESSION_MEMORY_IMPLEMENTATION_SUMMARY.md)
+- CLI使用：docs/superpowers/specs/2025-01-06-cli-design.md
+- 技能配置：docs/SKILL_CONFIG_GUIDE.md
 
 ---
 
@@ -384,7 +562,85 @@ prompt_config:
 python main.py --config customer_service.yaml
 ```
 
-### 示例2：创建开发团队
+### 示例2：创建带上下文压缩的智能客服 ⭐ NEW
+
+```yaml
+# customer_service_with_compression.yaml
+agent_metadata:
+  agent_id: "customer_service_compression_001"
+  agent_name: "智能客服助手（带上下文压缩）"
+  agent_type: "DialogAgent"
+  description: "24小时在线智能客服，具备智能上下文管理功能"
+  version: "1.1.0"
+
+model_config:
+  model_name: "qwen-max"
+  api_key: "your-qwen-api-key"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  temperature: 0.7
+  max_tokens: 2000
+
+prompt_config:
+  system_prompt: |
+    你是一个专业的客户服务代表，具备智能上下文管理能力。
+
+    你的优势：
+    - 记住重要的客户信息和历史对话
+    - 在长对话中保持连贯的服务质量
+    - 自动识别和保护关键业务信息
+
+    服务准则：
+    - 优先处理VIP客户和投诉问题
+    - 保持专业友好的服务态度
+    - 基于上下文提供个性化服务
+
+# 上下文压缩配置（客服场景优化）
+context_compression_config:
+  enabled: true
+  active_strategy: "hybrid"
+  strategies:
+    hybrid:
+      enabled: true
+      semantic_weight: 0.7          # 客服场景重视语义理解
+      token_weight: 0.3
+      min_context_length: 1500
+    semantic:
+      enabled: true
+      similarity_threshold: 0.8      # 高质量要求
+      preserve_keywords:             # 保留关键业务词汇
+        - "订单号"
+        - "VIP客户"
+        - "投诉"
+        - "退换货"
+        - "重要"
+    token_based:
+      enabled: true
+      max_tokens: 2500
+      priority_sections: ["order_info", "product_details"]
+  trigger_conditions:
+    max_context_length: 4000        # 客服场景允许更长上下文
+    token_threshold: 3000
+    time_interval_minutes: 30
+  priority_config:
+    enabled: true
+    preservation_threshold: 0.85    # 高保留阈值
+    priority_rules:
+      - rule_id: "preserve_vip_customers"
+        rule_name: "保留VIP客户信息"
+        priority: 10
+        action: "preserve"
+      - rule_id: "preserve_complaints"
+        rule_name: "保留投诉记录"
+        priority: 9
+        action: "preserve"
+```
+
+运行：
+```bash
+python main.py --config customer_service_with_compression.yaml
+```
+
+### 示例3：创建开发团队
 
 ```yaml
 # dev_team.yaml
@@ -556,15 +812,81 @@ skills_config:
         require_trigger_info: true
 ```
 
+### 4. 上下文压缩配置（智能上下文管理）⭐ NEW
+
+上下文压缩配置是 AgentScope PaaS 的核心功能之一，作为智能体配置的标准组成部分，无需独立配置文件。
+
+#### 核心特性
+- **智能压缩策略**: 支持语义压缩、Token压缩和混合策略
+- **自动触发**: 基于上下文长度、Token数量和时间间隔自动触发
+- **优先级保护**: 重要信息（如用户偏好、关键数据）优先保留
+- **质量控制**: 确保压缩后内容连贯性和信息完整性
+- **标准集成**: 作为 `context_compression_config` 字段集成到智能体配置
+
+#### 使用场景
+1. **长对话场景**: 当对话历史超过设定阈值时自动压缩
+2. **重要信息保留**: 通过优先级规则保护关键业务信息
+3. **性能优化**: 减少 Token 使用，提高响应速度
+4. **成本控制**: 在保证质量的前提下降低 API 调用成本
+
+#### 配置方式
+
+**方式一：Web界面配置**
+在智能体创建流程的第7步中配置上下文压缩参数
+
+**方式二：YAML配置文件**
+```yaml
+# 客服场景配置示例
+context_compression_config:
+  enabled: true
+  active_strategy: "hybrid"
+  strategies:
+    hybrid:
+      enabled: true
+      semantic_weight: 0.7      # 客服场景更重视语义理解
+      token_weight: 0.3
+      min_context_length: 1500
+    semantic:
+      enabled: true
+      similarity_threshold: 0.8  # 更高的相似度要求
+      preserve_keywords: ["订单号", "VIP客户", "投诉", "重要"]
+  priority_config:
+    enabled: true
+    preservation_threshold: 0.85
+    priority_rules:
+      - rule_id: "preserve_customer_info"
+        rule_name: "保留客户信息"
+        priority: 10
+        action: "preserve"
+```
+
+#### 策略对比
+
+| 策略类型 | 适用场景 | 优势 | 配置复杂度 |
+|---------|---------|------|-----------|
+| **语义压缩** | 内容质量要求高 | 保持语义连贯，智能摘要 | 中等 |
+| **Token压缩** | 性能要求高 | 快速压缩，可预测长度 | 简单 |
+| **混合策略** | 平衡性能和质量 | 综合两者优势 | 较高 |
+
+#### 质量保证
+- **连贯性验证**: 最小连贯性分数 ≥ 0.8
+- **信息丢失控制**: 最大信息丢失率 ≤ 0.2
+- **压缩目标**: 目标压缩比 30%-60%
+- **自动验证**: 启用验证确保压缩效果
+
+**详细配置指南**: 请参阅 [AGENT_CONFIG_COMPRESSION_GUIDE.md](AGENT_CONFIG_COMPRESSION_GUIDE.md)
+
 ---
 
 ## 📚 参考文档
 
 ### 官方文档
 - [AgentScope 官方文档](https://github.com/modelscope/agentscope)
+- [重构总结报告](./REFACTORING_SUMMARY.md) ⭐ NEW
+- [上下文压缩配置指南](./AGENT_CONFIG_COMPRESSION_GUIDE.md)
+- [CLI设计文档](./docs/superpowers/specs/2025-01-06-cli-design.md) ⭐ NEW
+- [快速启动指南](./START_HERE.md) ⭐ NEW
 - [技能配置详细指南](./docs/SKILL_CONFIG_GUIDE.md)
-- [配置文件完整说明](./configs/single_agent_paas_template.yaml)
-- [多智能体协作说明](./configs/multi_agent_paas_template.yaml)
 
 ### 相关链接
 - AgentScope GitHub: https://github.com/modelscope/agentscope
@@ -601,16 +923,37 @@ skills_config:
 
 ## 📊 项目状态
 
-当前版本：v1.0.0
-最后更新：2025年1月
+当前版本：v1.2.0 ⭐ NEW
+最后更新：2026年6月6日 ⭐ UPDATED
 维护状态：✅ 活跃维护中
 
-**技术栈：**
-- 后端：Python 3.8+ / FastAPI / AgentScope
-- 前端：React 18 / TypeScript / Vite / Ant Design
+**最新功能** ⭐ (v1.2.0):
+- ✅ **代码重构优化**: 删除82个冗余文件，优化7个核心模块
+- ✅ **CLI工具完整实现**: 支持配置验证、批量运行、交互模式
+- ✅ **会话记忆系统**: 完整的对话历史和记忆管理
+- ✅ **运行时支持**: 智能体生命周期管理和性能监控
+- ✅ **统一日志系统**: 彩色输出、文件记录、统一接口
+- ✅ **MCP协议支持**: 外部工具和服务集成
+- ✅ **上下文压缩集成**: 智能上下文管理作为标准配置
+- ✅ **生产就绪**: 100% 测试通过，真实环境验证
+
+**技术栈**：
+- 后端：Python 3.8+ / FastAPI / AgentScope 1.0.19
+- 前端：React 18 / TypeScript / Vite / Ant Design 5
 - 认证：JWT / bcrypt
-- 数据存储：JSON文件 / SQLite（可扩展至PostgreSQL）
-- API文档：Swagger/OpenAPI
+- 存储：JSON / SQLite / Redis
+- CLI：argparse / logging
+- 测试：pytest / playwright
+
+**架构特性**:
+- 🌐 分布式智能体管理
+- 🔐 企业级安全认证
+- 📊 实时监控和日志
+- 🤖 智能上下文压缩
+- 💾 会话记忆管理
+- 🔌 RESTful API设计
+- 🖥️ 完整CLI工具
+- ⚡ 运行时性能优化
 
 ---
 

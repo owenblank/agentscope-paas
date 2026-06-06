@@ -60,6 +60,63 @@ memory_config:
   vector:
     enabled: false
 
+# ============================================
+# 上下文压缩配置（可选，默认配置）
+# ============================================
+context_compression_config:
+  enabled: true
+  active_strategy: "hybrid"
+  strategies:
+    hybrid:
+      enabled: true
+      semantic_weight: 0.6
+      token_weight: 0.4
+      min_context_length: 1000
+      adaptive_threshold: 0.8
+    semantic:
+      enabled: true
+      similarity_threshold: 0.75
+      preserve_entities: true
+      preserve_keywords:
+        - "重要"
+        - "关键"
+        - "必须记住"
+      min_summary_length: 100
+      max_summary_length: 500
+    token_based:
+      enabled: false
+      max_tokens: 2000
+      preserve_structure: true
+      priority_sections: ["system", "user"]
+      compression_ratio: 0.5
+  trigger_conditions:
+    max_context_length: 3000
+    token_threshold: 2000
+    trigger_on_each_turn: false
+  quality_controls:
+    min_coherence_score: 0.8
+    max_information_loss: 0.2
+    enable_validation: true
+    compression_targets:
+      min_compression_ratio: 0.3
+      max_compression_ratio: 0.6
+
+# ============================================
+# 基础配置（最少必要配置）
+# ============================================
+behavior_config:
+  max_conversation_rounds: 10
+  auto_reply: true
+
+memory_config:
+  short_term:
+    enabled: true
+    max_history_rounds: 10
+  long_term:
+    enabled: false
+  vector:
+    enabled: false
+
 monitoring_config:
   log_level: "INFO"
   save_conversation_history: true

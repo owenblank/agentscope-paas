@@ -8,7 +8,7 @@ export interface User {
   email: string
   role: 'user' | 'admin'
   created_at: string
-  updated_at: string
+  updated_at?: string  // Optional since backend doesn't always return it
   is_active: boolean
 }
 
@@ -37,7 +37,9 @@ export interface LoginRequest {
 
 export interface AuthResponse {
   user: User
-  api_key: string
+  api_key?: string  // For registration
+  access_token?: string  // For login (JWT compatible)
+  token_type?: string
   message: string
 }
 
