@@ -297,5 +297,10 @@ def main() -> int:
         return 1
 
 
+def console_script_main() -> int:
+    """Entry point for console_scripts - properly handles sys.argv"""
+    return main()
+
+
 if __name__ == '__main__':
     sys.exit(main())
