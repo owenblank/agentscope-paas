@@ -1,15 +1,16 @@
 # agentscope_paas/cli/config_processor.py
 import glob
-import logging
 from pathlib import Path
 from typing import List, Dict, Any
+
+from agentscope_paas.utils.logger import get_logger
 
 
 class ConfigProcessor:
     """Processes configuration files for CLI operations"""
 
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
     def scan_directory(self, directory: str, pattern: str = "*.yaml") -> List[str]:
         """Scan directory for configuration files"""

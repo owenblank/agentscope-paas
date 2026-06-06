@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { AgentConfig, ValidationResult, CostEstimate, MCPConfig, BuiltInToolsConfig, ContextCompressionConfig } from '@/types'
+import type { AgentConfig, ValidationResult, CostEstimate, MCPConfig, BuiltInToolsConfig, ContextCompressionConfig, SessionMemoryConfig, RuntimeConfig } from '@/types'
+import { getDefaultRuntimeConfig } from '@/components/Agent/RuntimeConfigForm'
 
 interface AgentFormState {
   // 当前步骤
@@ -161,7 +162,25 @@ const initialFormData: Partial<AgentConfig> = {
         max_compression_ratio: 0.6
       }
     }
-  }
+  },
+  session_memory_config: {
+    enabled: false,
+    storage_type: 'redis',
+    redis_config: {
+      host: 'localhost',
+      port: 6379,
+      db: 0,
+      password: '',
+      connection_pool_size: 10,
+      socket_timeout: 5,
+      socket_connect_timeout: 5,
+    },
+    ttl: 3600,
+    max_messages: 100,
+    memory_key_prefix: 'session_memory',
+  },
+  // Runtime configuration for agent deployment
+  runtime_config: getDefaultRuntimeConfig()
 }
 
 export const useAgentFormStore = create<AgentFormState>()(

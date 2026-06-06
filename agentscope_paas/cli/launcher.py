@@ -1,7 +1,7 @@
 # agentscope_paas/cli/launcher.py
-import logging
 from typing import Dict, Any, Optional
 from agentscope_paas.cli.interactive import InteractiveSession
+from agentscope_paas.utils.logger import get_logger
 
 
 class Launcher:
@@ -10,7 +10,7 @@ class Launcher:
     def __init__(self, mode: str = "interactive"):
         self.mode = mode
         self.agents: Dict[str, Any] = {}
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
     def launch_agent(self, config: Dict[str, Any], agent_id: str) -> bool:
         """Launch a single agent"""

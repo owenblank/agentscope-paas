@@ -8,12 +8,13 @@ supporting stdio, SSE, and HTTP connection types for external tool and resource 
 import asyncio
 import json
 import subprocess
-import logging
 from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
 from pathlib import Path
 import httpx
 from sseclient import SSEClient
+
+from agentscope_paas.utils.logger import get_logger
 
 
 class MCPConnectionError(Exception):
@@ -26,18 +27,9 @@ class MCPClient:
 
     def __init__(self):
         """Initialize MCP client"""
-        self.logger = self._get_logger()
+        self.logger = get_logger(__name__)
         self.active_connections: Dict[str, Any] = {}
         self.connection_history: List[Dict[str, Any]] = []
-
-    def _get_logger(self):
-        """Get logger instance"""
-        try:
-            from agentscope_paas.utils.logger import get_logger
-            return get_logger(__name__)
-        except ImportError:
-            logging.basicConfig(level=logging.INFO)
-            return logging.getLogger(__name__)
 
     # Synchronous wrapper methods for FastAPI compatibility
     def test_connection_sync(self, server_config: Dict[str, Any]) -> Dict[str, Any]:

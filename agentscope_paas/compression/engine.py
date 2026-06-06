@@ -6,11 +6,12 @@ semantic compression, token-based compression, and hybrid approaches.
 """
 
 import asyncio
-import logging
 from typing import Dict, Any, Optional, List, Callable
 from datetime import datetime
 from enum import Enum
 import math
+
+from agentscope_paas.utils.logger import get_logger
 
 
 class CompressionStrategy(Enum):
@@ -37,18 +38,9 @@ class ContextCompressionEngine:
 
     def __init__(self):
         """Initialize compression engine"""
-        self.logger = self._get_logger()
+        self.logger = get_logger(__name__)
         self.compression_stats: Dict[str, Any] = {}
         self.compression_history: List[Dict[str, Any]] = []
-
-    def _get_logger(self):
-        """Get logger instance"""
-        try:
-            from agentscope_paas.utils.logger import get_logger
-            return get_logger(__name__)
-        except ImportError:
-            logging.basicConfig(level=logging.INFO)
-            return logging.getLogger(__name__)
 
     # Synchronous wrapper methods for FastAPI compatibility
     def analyze_context_sync(self, context: List[Dict[str, Any]], compression_config: Dict[str, Any]) -> Dict[str, Any]:

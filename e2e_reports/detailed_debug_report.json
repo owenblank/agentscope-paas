@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-06-06 12:15:19",
+  "react_status": {
+    "rootInnerHTML": "",
+    "bodyDisplay": "block",
+    "bodyVisibility": "visible",
+    "bodyOpacity": "1",
+    "documentReady": "complete",
+    "hasReact": true
+  },
+  "console_messages": [
+    {
+      "type": "debug",
+      "text": "[vite] connecting...",
+      "location": "http://localhost:3005/@vite/client:494"
+    },
+    {
+      "type": "debug",
+      "text": "[vite] connected.",
+      "location": "http://localhost:3005/@vite/client:617"
+    }
+  ],
+  "js_errors": [
+    {
+      "type": "page_error",
+      "message": "The requested module '/node_modules/.vite/deps/@ant-design_icons.js?v=59e95542' does not provide an export named 'HeartbeatOutlined'"
+    }
+  ],
+  "network_errors": [],
+  "api_calls": [],
+  "summary": {
+    "total_console": 2,
+    "total_errors": 1,
+    "total_network_errors": 0,
+    "total_api_calls": 0
+  }
+}

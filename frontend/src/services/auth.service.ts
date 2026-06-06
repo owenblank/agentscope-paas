@@ -18,10 +18,12 @@ export const authService = {
    * User registration
    */
   async register(data: RegisterRequest): Promise<AuthResponse> {
+    console.log('authService.register called with:', data)
     const response = await api.post<ApiResponse<AuthResponse>>(
       '/auth/register',
       data
     )
+    console.log('authService.register received response:', response.data)
     return response.data.data
   },
 
@@ -29,10 +31,12 @@ export const authService = {
    * User login
    */
   async login(data: LoginRequest): Promise<AuthResponse> {
+    console.log('authService.login called with:', data)
     const response = await api.post<ApiResponse<AuthResponse>>(
       '/auth/login',
       data
     )
+    console.log('authService.login received response:', response.data)
     return response.data.data
   },
 

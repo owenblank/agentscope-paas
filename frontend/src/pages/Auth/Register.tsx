@@ -24,13 +24,16 @@ export const Register: React.FC = () => {
 
   const onFinish = async (values: RegisterFormData) => {
     try {
+      console.log('Form submitted with values:', values)
       await register(values.username, values.email, values.password)
+      console.log('Registration completed successfully')
       message.success('注册成功')
       // 稍微延迟以确保message显示
       setTimeout(() => {
         navigate('/')
       }, 100)
     } catch (error) {
+      console.error('Registration form error:', error)
       // Error is handled by the store
       message.error('注册失败，请稍后重试')
     }

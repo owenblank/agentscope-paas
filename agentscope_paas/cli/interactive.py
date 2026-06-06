@@ -1,6 +1,7 @@
 # agentscope_paas/cli/interactive.py
-import logging
 from typing import Dict, Any
+
+from agentscope_paas.utils.logger import get_logger
 
 
 class InteractiveSession:
@@ -9,7 +10,7 @@ class InteractiveSession:
     def __init__(self, agents: Dict[str, Any]):
         self.agents = agents
         self.running = False
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
         self.current_agent = list(agents.keys())[0] if agents else None
 
     def display_welcome(self) -> None:

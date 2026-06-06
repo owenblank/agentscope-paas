@@ -1,0 +1,144 @@
+# AgentScope-PaaS 会话记忆配置示例
+# 此配置文件展示了如何为智能体启用会话记忆功能，支持Redis存储和多轮对话记忆
+
+agent_metadata:
+  agent_id: "assistant_with_memory"
+  agent_name: "记忆助手"
+  agent_type: "ReActAgent"
+  description: "具有会话记忆能力的智能助手，能够记住对话历史并提供连贯的交互体验"
+  version: "1.0.0"
+  tags: ["对话", "记忆", "助手"]
+
+# 模型配置
+model_config:
+  model_name: "gpt-4o"
+  api_key: "${OPENAI_API_KEY}"  # 从环境变量读取API密钥
+  base_url: "https://api.openai.com/v1"
+  temperature: 0.7
+  max_tokens: 2000
+
+# 提示词配置
+prompt_config:
+  system_prompt: |
+    你是一个有用的AI助手，具有记住对话历史的能力。
+
+    你的特点：
+    - 能够记住之前的对话内容
+    - 提供连贯和个性化的回应
+    - 参考用户之前提到的信息和偏好
+
+    请根据对话历史提供准确和有帮助的回应。
+  user_prompt_template: "用户咨询：{user_input}"
+
+# 记忆配置
+memory_config:
+  # 短期记忆（已弃用，现在使用session_memory_config）
+  short_term:
+    enabled: false
+    max_history_rounds: 10
+
+# 会话记忆配置（核心功能）
+session_memory_config:
+  enabled: true
+  storage_type: "redis"  # 存储类型：redis（推荐）、memory、file
+
+  # Redis连接配置
+  redis_config:
+    host: "localhost"
+    port: 6379
+    db: 0
+    password: null  # 如果Redis设置了密码，在此填写
+    connection_pool_size: 10  # 连接池大小
+    socket_timeout: 5  # Socket超时时间（秒）
+    socket_connect_timeout: 5  # 连接超时时间（秒）
+
+  # 会话记忆设置
+  ttl: 3600  # 会话记忆过期时间（秒），1小时后自动清除
+  max_messages: 100  # 单个会话最多保存100条消息
+  memory_key_prefix: "session_memory"  # Redis键前缀
+
+# 工具配置（可选）
+tool_config:
+  tools:
+    - tool_id: "web_search"
+      tool_name: "网络搜索"
+      tool_type: "api"
+      description: "搜索互联网获取最新信息"
+      tool_config:
+        endpoint: "https://api.search.example.com"
+        api_key: "${SEARCH_API_KEY}"
+
+# 知识库配置（可选）
+knowledge_config:
+  knowledge_bases:
+    - knowledge_id: "product_kb"
+      knowledge_name: "产品知识库"
+      knowledge_type: "vector"
+      description: "包含产品文档和FAQ的向量数据库"
+      knowledge_config:
+        storage_type: "vector"
+        connection_info:
+          vector_db_path: "./data/knowledge/product_kb"
+          collection_name: "product_docs"
+          embedding_model: "text-embedding-ada-002"
+
+# 行为配置
+behavior_config:
+  max_conversation_rounds: 50  # 最大对话轮数
+  auto_reply: true  # 自动回复
+  output_format:
+    type: "text"  # 输出格式：text、json、markdown、xml
+    include_reasoning: false  # 是否包含推理过程
+
+# 监控配置
+monitoring_config:
+  log_level: "INFO"
+  enable_performance_tracking: true
+  save_conversation_history: true
+  conversation_history_path: "./data/conversations"
+
+# MCP配置（可选）
+mcp_config:
+  enabled: false
+  servers: []
+  global_settings:
+    connection_timeout: 30
+    max_concurrent_connections: 5
+    enable_tool_logging: true
+
+# 内置工具配置（可选）
+built_in_tools_config:
+  enabled: false
+  available_tools: []
+  categories: []
+
+# 上下文压缩配置（可选）
+context_compression_config:
+  enabled: false
+  active_strategy: "hybrid"
+
+# 使用说明：
+# 1. 将此配置文件保存为 agent_with_session_memory.yaml
+# 2. 确保Redis服务器正在运行（docker run -d -p 6379:6379 redis）
+# 3. 设置环境变量：export OPENAI_API_KEY=your_api_key
+# 4. 使用以下方式创建智能体：
+#    - 通过API：POST /api/v1/agents
+#    - 通过CLI：agentscope-paas agent create agent_with_session_memory.yaml
+#    - 通过Web界面：导入此配置文件
+#
+# 功能说明：
+# - 智能体会记住同一会话中的对话历史
+# - 会话记忆存储在Redis中，支持分布式部署
+# - 会话记忆有过期时间（TTL），自动清理过期数据
+# - 支持多用户、多会话的独立记忆管理
+#
+# 测试方法：
+# 1. 创建智能体后，启动对话会话
+# 2. 发送第一条消息："我叫张三"
+# 3. 发送第二条消息："我叫什么名字？"
+# 4. 智能体应该能够正确回答："你叫张三"
+#
+# 注意事项：
+# - 确保Redis服务器可访问
+# - 如果Redis连接失败，会自动降级到内存存储
+# - 会话记忆key格式：session_memory:user_id:session_id

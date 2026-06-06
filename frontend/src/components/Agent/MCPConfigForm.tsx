@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Form, Input, Switch, Button, Card, Space, Select, InputNumber, message, Collapse, Tag, Tooltip, Divider, Radio } from 'antd'
-import { PlusOutlined, DeleteOutlined, TestConnectionOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined, ApiOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import { useAgentFormStore } from '@/store/agentFormStore'
 import type { MCPConfig, MCPServerConfig, MCPConnectionConfig } from '@/types'
 import { agentService } from '@/services/agentService'
@@ -221,7 +221,7 @@ const MCPConfigForm: React.FC<MCPConfigFormProps> = ({ className, style }) => {
           <Button
             type="link"
             size="small"
-            icon={<TestConnectionOutlined />}
+            icon={<ApiOutlined />}
             onClick={() => testConnection(server)}
             loading={testingConnection}
             disabled={!mcpEnabled}

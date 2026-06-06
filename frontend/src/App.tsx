@@ -5,6 +5,7 @@ import { MainLayout } from './components/Layout'
 import { Login, Register } from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import { AgentList, AgentCreate } from './pages/Agent'
+import AgentCreateSimple from './pages/Agent/AgentCreateSimple'
 import { TeamList, TeamCreate } from './pages/Team'
 import Conversation from './pages/Conversation'
 import Monitoring from './pages/Monitoring'
@@ -46,6 +47,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="agents" element={<AgentList />} />
             <Route path="agents/create" element={<AgentCreate />} />
+            <Route path="agents/create/simple" element={<AgentCreateSimple />} />
             <Route path="agents/:agentId" element={<AgentList />} />
             <Route path="teams" element={<TeamList />} />
             <Route path="teams/create" element={<TeamCreate />} />

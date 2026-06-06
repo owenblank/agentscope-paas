@@ -497,6 +497,29 @@ export interface ContextCompressionConfig {
   }
 }
 
+// ============================================
+// Session Memory Configuration Types
+// ============================================
+
+export interface RedisConnectionConfig {
+  host: string
+  port: number
+  db: number
+  password?: string
+  connection_pool_size: number
+  socket_timeout: number
+  socket_connect_timeout: number
+}
+
+export interface SessionMemoryConfig {
+  enabled: boolean
+  storage_type: 'redis' | 'memory' | 'file'
+  redis_config?: RedisConnectionConfig
+  ttl: number
+  max_messages: number
+  memory_key_prefix: string
+}
+
 export interface AgentConfig {
   agent_metadata: AgentMetadata
   model_config: ModelConfig
@@ -512,6 +535,7 @@ export interface AgentConfig {
   mcp_config?: MCPConfig
   built_in_tools_config?: BuiltInToolsConfig
   context_compression_config?: ContextCompressionConfig
+  session_memory_config?: SessionMemoryConfig
 }
 
 export interface Agent {
@@ -536,6 +560,146 @@ export interface AgentStatistics {
   total_cost: number
   average_response_time: number
   success_rate: number
+}
+
+// ============================================
+// Runtime Configuration Types
+// ============================================
+
+export type RuntimeDeploymentMode = 'traditional' | 'runtime' | 'hybrid'
+
+export interface RuntimeServiceConfig {
+  host: string
+  port: number
+  max_concurrent_requests?: number
+  startup_timeout?: number
+  request_timeout?: number
+  enable_cors?: boolean
+  cors_origins?: string[]
+}
+
+export interface RuntimeLifecycleConfig {
+  auto_start: boolean
+  auto_stop: boolean
+  idle_timeout_minutes: number
+  graceful_shutdown_timeout: number
+  max_retries: number
+  retry_delay_seconds: number
+  health_check_on_failure: boolean
+}
+
+export interface RuntimeHealthCheckConfig {
+  enabled: boolean
+  interval_seconds: number
+  timeout_seconds: number
+  failure_threshold: number
+  success_threshold: number
+  check_dependencies?: boolean
+  custom_checks?: string[]
+}
+
+export interface RuntimeStreamingConfig {
+  enabled: boolean
+  chunk_size: number
+  buffer_size: number
+  keepalive_interval: number
+  timeout_seconds: number
+}
+
+export interface RuntimeSandboxConfig {
+  enabled: boolean
+  sandbox_type: 'docker' | 'process' | 'thread' | 'none'
+  image?: string
+  memory_limit_mb?: number
+  cpu_limit?: number
+  timeout_seconds?: number
+  allowed_operations?: string[]
+  restricted_paths?: string[]
+}
+
+export interface RuntimeMonitoringConfig {
+  enable_metrics: boolean
+  log_level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR'
+  metrics_port?: number
+  prometheus_enabled?: boolean
+  custom_metrics?: string[]
+}
+
+export interface RuntimeConfig {
+  deployment_mode: RuntimeDeploymentMode
+  service_config: RuntimeServiceConfig
+  lifecycle_config: RuntimeLifecycleConfig
+  health_check_config: RuntimeHealthCheckConfig
+  streaming_config: RuntimeStreamingConfig
+  sandbox_config: RuntimeSandboxConfig
+  monitoring_config: RuntimeMonitoringConfig
+  custom_decorators?: string[]
+  middleware?: string[]
+  environment_variables?: Record<string, string>
+}
+
+export interface RuntimeDeploymentStatus {
+  agent_id: string
+  deployment_status: 'not_deployed' | 'deployed' | 'deploying' | 'stopping' | 'error' | 'stopped'
+  deployment_url?: string
+  deployment_port?: number
+  health_status: 'unknown' | 'healthy' | 'unhealthy' | 'error'
+  last_health_check?: string
+  auto_start: boolean
+  idle_timeout_minutes: number
+  runtime_available: boolean
+  last_activity?: string
+  uptime_minutes?: number
+  idle_minutes?: number
+}
+
+export interface RuntimeChatResponse {
+  success: boolean
+  agent_id: string
+  response?: string
+  stream_url?: string
+  error?: string
+  timestamp: string
+}
+
+export interface RuntimeDeployResponse {
+  success: boolean
+  agent_id: string
+  deployment_url?: string
+  deployment_status: string
+  message: string
+  runtime_available: boolean
+}
+
+export interface RuntimeHealthResponse {
+  agent_id: string
+  status: string
+  deployment_status: string
+  last_check: string
+  deployment_url?: string
+  uptime_minutes?: number
+  idle_minutes?: number
+  runtime_available: boolean
+}
+
+// Update AgentConfig to include runtime_config
+export interface AgentConfig {
+  agent_metadata: AgentMetadata
+  model_config: ModelConfig
+  prompt_config: PromptConfig
+  memory_config?: MemoryConfig
+  tool_config?: ToolConfig
+  knowledge_config?: KnowledgeConfig
+  skills_config?: SkillsConfig
+  behavior_config?: BehaviorConfig
+  monitoring_config?: MonitoringConfig
+  extension_config?: ExtensionConfig
+  // New configuration extensions
+  mcp_config?: MCPConfig
+  built_in_tools_config?: BuiltInToolsConfig
+  context_compression_config?: ContextCompressionConfig
+  session_memory_config?: SessionMemoryConfig
+  runtime_config?: RuntimeConfig  // New: Runtime configuration
 }
 
 export interface AgentListResponse {

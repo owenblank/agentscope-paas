@@ -108,6 +108,15 @@ class ConfigLoader:
         """
         return self.config_type
 
+    def get_full_config(self) -> Dict[str, Any]:
+        """
+        获取完整的配置字典
+
+        Returns:
+            完整的配置字典
+        """
+        return self.raw_config
+
     def get_agent_metadata(self) -> Dict[str, Any]:
         """
         获取智能体元数据

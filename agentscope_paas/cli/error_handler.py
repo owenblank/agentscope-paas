@@ -1,14 +1,15 @@
 # agentscope_paas/cli/error_handler.py
-import logging
 import sys
 from typing import Optional
+
+from agentscope_paas.utils.logger import get_logger
 
 class ErrorHandler:
     """Handles CLI errors with user-friendly messages"""
 
     def __init__(self, strict: bool = False):
         self.strict = strict
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
     def handle_config_error(self, config_path: str, error: Exception, strict: bool) -> None:
         """Handle configuration file errors"""

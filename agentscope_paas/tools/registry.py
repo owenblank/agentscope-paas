@@ -6,10 +6,11 @@ built-in tools and MCP-provided tools with security, validation, and execution m
 """
 
 import asyncio
-import logging
 from typing import Dict, Any, Optional, List, Callable
 from datetime import datetime
 from enum import Enum
+
+from agentscope_paas.utils.logger import get_logger
 
 
 class ToolPermissionLevel(Enum):
@@ -44,21 +45,12 @@ class ToolRegistry:
 
     def __init__(self):
         """Initialize tool registry"""
-        self.logger = self._get_logger()
+        self.logger = get_logger(__name__)
         self.built_in_tools: Dict[str, Dict[str, Any]] = {}
         self.mcp_tools: Dict[str, Dict[str, Any]] = {}
         self.tool_categories: Dict[str, Dict[str, Any]] = {}
         self.execution_stats: Dict[str, Dict[str, Any]] = {}
         self._initialize_built_in_tools()
-
-    def _get_logger(self):
-        """Get logger instance"""
-        try:
-            from agentscope_paas.utils.logger import get_logger
-            return get_logger(__name__)
-        except ImportError:
-            logging.basicConfig(level=logging.INFO)
-            return logging.getLogger(__name__)
 
     # Synchronous wrapper methods for FastAPI compatibility
     def execute_tool_sync(self, tool_id: str, arguments: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
