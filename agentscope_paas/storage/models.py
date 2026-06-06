@@ -3,14 +3,14 @@ Data models for authentication system
 """
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 
 
 class User(BaseModel):
     """User model"""
     user_id: str = Field(..., description="Unique user identifier")
     username: str = Field(..., min_length=3, max_length=50, description="Username")
-    email: EmailStr = Field(..., description="User email")
+    email: str = Field(..., description="User email")
     password_hash: str = Field(..., description="Hashed password")
     role: str = Field(default="user", description="User role: user or admin")
     created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
