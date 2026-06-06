@@ -1,0 +1,539 @@
+# ============================================
+# 订单处理技能配置示例
+# ============================================
+# 这是一个符合Anthropic规范的订单处理技能示例
+
+skill_metadata:
+  skill_id: "order_processing"
+  skill_name: "订单处理技能"
+  skill_type: "data_processing"
+  version: "1.0.0"
+  description: "提供订单创建、查询、修改、取消等订单管理功能"
+  tags:
+    - "订单管理"
+    - "电商"
+    - "业务处理"
+  author:
+    name: "AgentScope Team"
+    email: "support@agentscope.example.com"
+    organization: "AgentScope PaaS"
+
+# ============================================
+# 技能能力定义
+# ============================================
+capabilities:
+  operations:
+    # 创建订单
+    - operation_id: "create_order"
+      operation_name: "创建订单"
+      description: "根据用户信息创建新订单，包括商品信息、收货地址、支付方式等"
+      enabled: true
+      parameters:
+        input_schema:
+          type: "object"
+          properties:
+            customer_id:
+              type: "string"
+              description: "客户ID"
+            products:
+              type: "array"
+              description: "商品列表"
+              items:
+                type: "object"
+                properties:
+                  product_id:
+                    type: "string"
+                    description: "商品ID"
+                  quantity:
+                    type: "integer"
+                    description: "购买数量"
+                    minimum: 1
+                  price:
+                    type: "number"
+                    description: "商品单价"
+                    minimum: 0
+                required:
+                  - "product_id"
+                  - "quantity"
+                  - "price"
+            shipping_address:
+              type: "object"
+              description: "收货地址"
+              properties:
+                recipient_name:
+                  type: "string"
+                  description: "收件人姓名"
+                phone:
+                  type: "string"
+                  description: "联系电话"
+                province:
+                  type: "string"
+                  description: "省份"
+                city:
+                  type: "string"
+                  description: "城市"
+                district:
+                  type: "string"
+                  description: "区县"
+                detailed_address:
+                  type: "string"
+                  description: "详细地址"
+                postal_code:
+                  type: "string"
+                  description: "邮政编码"
+              required:
+                - "recipient_name"
+                - "phone"
+                - "province"
+                - "city"
+                - "detailed_address"
+            payment_method:
+              type: "string"
+              description: "支付方式"
+              enum: ["alipay", "wechat_pay", "credit_card", "bank_transfer"]
+            remarks:
+              type: "string"
+              description: "订单备注"
+              maxLength: 500
+          required:
+            - "customer_id"
+            - "products"
+            - "shipping_address"
+            - "payment_method"
+
+        output_schema:
+          type: "object"
+          properties:
+            order_id:
+              type: "string"
+              description: "订单ID"
+            order_number:
+              type: "string"
+              description: "订单编号"
+            status:
+              type: "string"
+              description: "订单状态"
+              enum: ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"]
+            total_amount:
+              type: "number"
+              description: "订单总金额"
+            created_at:
+              type: "string"
+              description: "创建时间"
+              format: "date-time"
+            estimated_delivery:
+              type: "string"
+              description: "预计送达时间"
+              format: "date-time"
+
+      execution_config:
+        timeout: 30
+        max_retries: 2
+        allow_parallel: false
+
+    # 查询订单
+    - operation_id: "query_order"
+      operation_name: "查询订单"
+      description: "根据订单ID或订单编号查询订单详情"
+      enabled: true
+      parameters:
+        input_schema:
+          type: "object"
+          properties:
+            order_identifier:
+              type: "string"
+              description: "订单标识（ID或编号）"
+            identifier_type:
+              type: "string"
+              description: "标识类型"
+              enum: ["order_id", "order_number"]
+              default: "order_id"
+            include_details:
+              type: "boolean"
+              description: "是否包含详细信息"
+              default: true
+          required:
+            - "order_identifier"
+
+        output_schema:
+          type: "object"
+          properties:
+            order_info:
+              type: "object"
+              description: "订单基本信息"
+              properties:
+                order_id:
+                  type: "string"
+                order_number:
+                  type: "string"
+                status:
+                  type: "string"
+                total_amount:
+                  type: "number"
+                created_at:
+                  type: "string"
+            product_details:
+              type: "array"
+              description: "商品详情"
+              items:
+                type: "object"
+            shipping_info:
+              type: "object"
+              description: "物流信息"
+            payment_info:
+              type: "object"
+              description: "支付信息"
+
+      execution_config:
+        timeout: 15
+        max_retries: 1
+
+    # 修改订单
+    - operation_id: "modify_order"
+      operation_name: "修改订单"
+      description: "修改订单信息，如收货地址、商品数量等"
+      enabled: true
+      parameters:
+        input_schema:
+          type: "object"
+          properties:
+            order_id:
+              type: "string"
+              description: "订单ID"
+            modification_type:
+              type: "string"
+              description: "修改类型"
+              enum: ["address", "products", "quantity", "remarks"]
+            new_value:
+              type: "object"
+              description: "新的值"
+            reason:
+              type: "string"
+              description: "修改原因"
+          required:
+            - "order_id"
+            - "modification_type"
+            - "new_value"
+
+        output_schema:
+          type: "object"
+          properties:
+            success:
+              type: "boolean"
+              description: "是否修改成功"
+            message:
+              type: "string"
+              description: "操作结果消息"
+            updated_order:
+              type: "object"
+              description: "更新后的订单信息"
+
+      execution_config:
+        timeout: 30
+        max_retries: 2
+
+    # 取消订单
+    - operation_id: "cancel_order"
+      operation_name: "取消订单"
+      description: "取消指定订单，根据订单状态进行相应处理"
+      enabled: true
+      parameters:
+        input_schema:
+          type: "object"
+          properties:
+            order_id:
+              type: "string"
+              description: "订单ID"
+            cancel_reason:
+              type: "string"
+              description: "取消原因"
+              enum: ["customer_request", "out_of_stock", "payment_failed", "fraud_detected", "other"]
+            refund_method:
+              type: "string"
+              description: "退款方式"
+              enum: ["original_payment", "bank_transfer", "account_balance"]
+              default: "original_payment"
+            additional_notes:
+              type: "string"
+              description: "附加说明"
+              maxLength: 500
+          required:
+            - "order_id"
+            - "cancel_reason"
+
+        output_schema:
+          type: "object"
+          properties:
+            success:
+              type: "boolean"
+              description: "是否取消成功"
+            message:
+              type: "string"
+              description: "操作结果消息"
+            refund_info:
+              type: "object"
+              description: "退款信息"
+              properties:
+                refund_amount:
+                  type: "number"
+                  description: "退款金额"
+                refund_status:
+                  type: "string"
+                  description: "退款状态"
+                estimated_refund_date:
+                  type: "string"
+                  description: "预计退款时间"
+
+      execution_config:
+        timeout: 45
+        max_retries: 1
+
+# ============================================
+# 技能实现配置
+# ============================================
+implementation:
+  implementation_type: "api_call"
+
+  api_config:
+    endpoint: "https://api.example.com/orders/v1"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+      User-Agent: "AgentScope-OrderProcessing/1.0"
+    authentication:
+      type: "bearer_token"
+      credentials:
+        token: "{{ORDER_API_TOKEN}}"
+    timeout: 30
+
+# ============================================
+# 性能配置
+# ============================================
+performance_config:
+  max_concurrent_operations: 10
+  timeout_config:
+    default_timeout: 30
+    operation_specific_timeouts:
+      create_order: 30
+      query_order: 15
+      modify_order: 30
+      cancel_order: 45
+  resource_limits:
+    max_memory_usage: "512MB"
+    max_cpu_usage: 60
+  cache_config:
+    enabled: true
+    cache_type: "memory"
+    cache_ttl: 1800
+    max_cache_size: 500
+
+# ============================================
+# 安全配置
+# ============================================
+security_config:
+  security_level: "high"
+  encryption_config:
+    encrypt_in_transit: true
+    encrypt_at_rest: true
+    encryption_algorithm: "AES-256"
+  access_control:
+    allowed_roles:
+      - "customer_service"
+      - "order_manager"
+      - "system_admin"
+    ip_whitelist:
+      - "192.168.1.0/24"
+      - "10.0.0.0/8"
+    time_restrictions:
+      allowed_hours:
+        start: "00:00"
+        end: "23:59"
+      allowed_days:
+        - "Monday"
+        - "Tuesday"
+        - "Wednesday"
+        - "Thursday"
+        - "Friday"
+        - "Saturday"
+        - "Sunday"
+
+# ============================================
+# 监控配置
+# ============================================
+monitoring_config:
+  enabled: true
+  metrics:
+    call_count: true
+    execution_time: true
+    success_rate: true
+    error_tracking: true
+    resource_usage: true
+  logging_config:
+    log_level: "INFO"
+    log_input_output: false
+    log_error_details: true
+    log_retention_days: 90
+
+# ============================================
+# 依赖配置
+# ============================================
+dependencies:
+  system_dependencies:
+    - "python3.9+"
+    - "requests>=2.28.0"
+  python_packages:
+    - package_name: "requests"
+      version: ">=2.28.0"
+      optional: false
+    - package_name: "pydantic"
+      version: ">=2.0.0"
+      optional: false
+  external_services:
+    - service_name: "order_api"
+      service_url: "https://api.example.com/orders/v1"
+      required: true
+      fallback_strategy: "return_error"
+
+# ============================================
+# 错误处理配置
+# ============================================
+error_handling:
+  strategy: "retry_with_backoff"
+  retry_config:
+    max_retries: 3
+    initial_delay: 1000
+    backoff_multiplier: 2
+    max_delay: 10000
+  fallback_config:
+    enable_fallback: true
+    fallback_operations:
+      - operation_id: "query_order"
+        fallback_strategy: "use_cached_result"
+      - operation_id: "create_order"
+        fallback_strategy: "return_error"
+
+# ============================================
+# 测试配置
+# ============================================
+testing_config:
+  test_cases:
+    - test_name: "创建订单测试"
+      test_description: "测试正常创建订单流程"
+      operation_id: "create_order"
+      input:
+        customer_id: "CUST123456"
+        products:
+          - product_id: "PROD001"
+            quantity: 2
+            price: 99.99
+        shipping_address:
+          recipient_name: "张三"
+          phone: "13800138000"
+          province: "北京市"
+          city: "北京市"
+          district: "朝阳区"
+          detailed_address: "某某街道123号"
+          postal_code: "100000"
+        payment_method: "alipay"
+      expected_output:
+        status: "pending"
+      assertions:
+        - type: "equals"
+          field: "status"
+          expected_value: "pending"
+        - type: "exists"
+          field: "order_id"
+
+    - test_name: "查询订单测试"
+      test_description: "测试订单查询功能"
+      operation_id: "query_order"
+      input:
+        order_identifier: "ORD123456"
+        identifier_type: "order_number"
+        include_details: true
+      expected_output:
+        order_info:
+          order_number: "ORD123456"
+      assertions:
+        - type: "equals"
+          field: "order_info.order_number"
+          expected_value: "ORD123456"
+
+  performance_tests:
+    - test_name: "批量订单查询性能测试"
+      operation_id: "query_order"
+      load_config:
+        concurrent_requests: 20
+        total_requests: 200
+        duration_seconds: 60
+      performance_expectations:
+        max_response_time_ms: 500
+        min_success_rate: 0.98
+        max_error_rate: 0.02
+
+# ============================================
+# 文档配置
+# ============================================
+documentation:
+  usage_documentation: |
+    ## 订单处理技能使用说明
+
+    ### 创建订单
+    使用create_order操作创建新订单。需要提供客户ID、商品列表、收货地址和支付方式。
+
+    ### 查询订单
+    使用query_order操作查询订单详情。可以通过订单ID或订单编号进行查询。
+
+    ### 修改订单
+    使用modify_order操作修改订单信息。支持修改收货地址、商品信息等。
+
+    ### 取消订单
+    使用cancel_order操作取消订单。系统会根据订单状态进行相应处理并启动退款流程。
+
+  examples:
+    - example_name: "创建简单订单"
+      description: "创建一个包含单个商品的订单"
+      operation_id: "create_order"
+      input_example:
+        customer_id: "CUST123456"
+        products:
+          - product_id: "PROD001"
+            quantity: 1
+            price: 199.99
+        shipping_address:
+          recipient_name: "李四"
+          phone: "13900139000"
+          province: "上海市"
+          city: "上海市"
+          district: "浦东新区"
+          detailed_address: "某大厦1号楼"
+        payment_method: "wechat_pay"
+      output_example:
+        order_id: "ORD789012"
+        order_number: "202306150001"
+        status: "pending"
+        total_amount: 199.99
+
+    - example_name: "查询订单状态"
+      description: "查询订单的当前状态和物流信息"
+      operation_id: "query_order"
+      input_example:
+        order_identifier: "202306150001"
+        identifier_type: "order_number"
+        include_details: true
+      output_example:
+        order_info:
+          order_number: "202306150001"
+          status: "shipped"
+          total_amount: 199.99
+        shipping_info:
+          current_status: "运输中"
+          estimated_delivery: "2023-06-18T18:00:00Z"
+
+  faq:
+    - question: "订单创建后可以修改吗？"
+      answer: "订单创建后，在订单状态为'待确认'或'已确认'时可以修改收货地址。商品数量修改仅在订单状态为'待确认'时可用。"
+    - question: "取消订单后多久能退款？"
+      answer: "退款时间取决于支付方式。支付宝和微信支付通常在1-3个工作日内到账，银行卡转账可能需要3-7个工作日。"
+    - question: "如何查询物流信息？"
+      answer: "使用query_order操作查询订单，返回结果中的shipping_info字段包含详细的物流信息。"
